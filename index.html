@@ -267,68 +267,97 @@ select {
   text-shadow: 0 0 24px var(--accent), 0 4px 0 var(--accent-dark);
   opacity: 0;
 }
-/* Splash screen — full-screen brand intro on app launch with rotating hints
-   and a 3-second progress bar. Tap-to-skip. Sits above everything until
-   it fades out. */
+/* Splash screen — full-bleed art piece (object-fit:cover) with a loader
+   pinned to the bottom over a soft dark gradient so text reads against
+   any part of the image. Mirrors Match Icon's pattern. Tap-to-skip. */
 .splash {
   position: fixed; inset: 0; z-index: 9999;
   background: linear-gradient(180deg, #1a3a6e 0%, #0e2452 100%);
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 24px;
+  justify-content: flex-end; align-items: center;
   opacity: 1;
-  transition: opacity 400ms ease-out;
+  transition: opacity 420ms ease-out;
   cursor: pointer;
   overflow: hidden;
 }
 .splash.fade-out { opacity: 0; pointer-events: none; }
 .splash-fallback {
-  display: none;        /* shown only if the image fails to load */
+  display: none;
+  position: absolute; inset: 0;
   font-size: 64px; font-weight: 900;
   color: #FFD166;
   text-shadow: 0 0 30px rgba(255,209,102,0.6), 0 6px 0 #B8232F;
   letter-spacing: 2px;
   text-align: center;
+  align-items: center; justify-content: center;
   line-height: 1;
 }
-.splash.no-image .splash-fallback { display: block; }
+.splash.no-image .splash-fallback { display: flex; }
 .splash.no-image .splash-img { display: none; }
 .splash-img {
-  max-width: 88%; max-height: 64vh;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
-  animation: splashFloat 2400ms ease-in-out infinite alternate;
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
-@keyframes splashFloat {
-  from { transform: translateY(-4px); }
-  to   { transform: translateY( 4px); }
+.splash-foot {
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 10px;
+  width: 100%;
+  padding: 80px 24px max(28px, var(--tg-safe-bottom, env(safe-area-inset-bottom, 28px)));
+  background: linear-gradient(to bottom,
+    rgba(15, 8, 28, 0) 0%,
+    rgba(15, 8, 28, 0.55) 50%,
+    rgba(15, 8, 28, 0.88) 100%);
 }
+.splash-spinner {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.20);
+  border-top-color: #FFD166;
+  animation: splashSpin 900ms linear infinite;
+}
+@keyframes splashSpin { to { transform: rotate(360deg); } }
 .splash-hint {
-  margin-top: 20px;
-  font-size: 14px; font-weight: 700;
-  color: rgba(255,255,255,0.92);
+  font-size: 13px; font-weight: 700;
+  color: #ffffff;
   text-align: center;
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 18px;
+  padding: 0 8px;
   max-width: 92vw;
   line-height: 1.35;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 .splash-bar {
-  margin-top: 14px;
-  width: 84%; max-width: 280px;
-  height: 8px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 999px;
+  width: 72%; max-width: 280px;
+  height: 12px;
+  background: rgba(15, 8, 28, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 10px;
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+  margin-top: 2px;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 .splash-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #FFD166, #FF6B35);
-  width: 0%;
-  border-radius: 999px;
-  box-shadow: 0 0 10px rgba(255,107,53,0.6);
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, #FFB100 0%, #FF6B35 60%, #FFD166 100%);
+  border-radius: 6px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 12px rgba(255, 138, 80, 0.6);
+  transition: width 80ms linear;
+}
+.splash-pct {
+  font-size: 12px; font-weight: 800;
+  color: #FFD166;
+  letter-spacing: 1.2px;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
+  min-width: 38px; text-align: center;
 }
 
 .loss-banner {
@@ -945,8 +974,12 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 <div class="splash" id="splash">
   <img class="splash-img" id="splash-img" src="assets/splash.webp" alt="Fat Stack" decoding="async" fetchpriority="high" onerror="document.getElementById('splash').classList.add('no-image')">
   <div class="splash-fallback">FAT STACK</div>
-  <div class="splash-hint" id="splash-hint">&nbsp;</div>
-  <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
+  <div class="splash-foot">
+    <div class="splash-spinner"></div>
+    <div class="splash-hint" id="splash-hint">&nbsp;</div>
+    <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
+    <div class="splash-pct" id="splash-pct">0%</div>
+  </div>
 </div>
 
 <div id="app">
@@ -5408,10 +5441,12 @@ function showSplash(onDone) {
     setTimeout(() => { try { el.remove(); } catch (e) {} onDone && onDone(); }, 420);
   }
   el.addEventListener('click', finish);   // tap-to-skip
+  const pctEl = document.getElementById('splash-pct');
   function tickBar() {
     if (done) return;
     const t = Math.min(1, (Date.now() - startTs) / DURATION);
     barEl.style.width = (t * 100).toFixed(1) + '%';
+    if (pctEl) pctEl.textContent = Math.floor(t * 100) + '%';
     if (t < 1) requestAnimationFrame(tickBar);
     else finish();
   }
