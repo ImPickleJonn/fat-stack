@@ -577,9 +577,10 @@ const SKUS = {
   skin_neon:    { id: 'skin_neon',    price: 150, emoji: '🌈', tKey: 'skuSkinNeon' },
   skin_wood:    { id: 'skin_wood',    price: 150, emoji: '🪵', tKey: 'skuSkinWood' },
   battle_pass:  { id: 'battle_pass',  price: 500, emoji: '🎖', tKey: 'skuBattlePass' },
+  test_purchase:{ id: 'test_purchase',price: 1,   emoji: '🧪', tKey: 'skuTestPurchase', adminOnly: true },
 };
 
-const SHOP_ORDER = ['starter_pack', 'revive', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass'];
+const SHOP_ORDER = ['starter_pack', 'revive', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass', 'test_purchase'];
 
 // Daily login chest — 7-day cycle, escalating rewards in gems.
 const CHEST_REWARDS = [25, 50, 75, 100, 150, 250, 500];
@@ -674,6 +675,7 @@ const state = {
   scorePops: [],     // DOM elements managed by spawnScorePop
   paintSkin: null,
   iapEnabled: false,
+  isAdmin: false,                // set by /api/admin/whoami on boot
   gameOver: false,
   welcomed: false,
   mascotBounce: 0,
@@ -781,6 +783,7 @@ const STRINGS = {
     skuSkinNeon: 'Neon Skin',
     skuSkinWood: 'Wood Skin',
     skuBattlePass: 'Season Pass',
+    skuTestPurchase: 'Test (admin)',
     bestValue: 'BEST VALUE',
     shareText: '🟧 I scored {score} in Fat Stack! Beat me 👉',
     tabShop: 'Shop', tabHome: 'Play', tabEarn: 'Earn',
@@ -832,6 +835,7 @@ const STRINGS = {
     skuSkinNeon: 'Неоновый скин',
     skuSkinWood: 'Деревянный скин',
     skuBattlePass: 'Сезонный пропуск',
+    skuTestPurchase: 'Тест (админ)',
     bestValue: 'ЛУЧШАЯ ЦЕНА',
     shareText: '🟧 Я набрал {score} в Fat Stack! Побей меня 👉',
     tabShop: 'Магазин', tabHome: 'Играть', tabEarn: 'Награды',
@@ -2141,6 +2145,8 @@ function renderShop() {
   grid.innerHTML = '';
   for (const id of SHOP_ORDER) {
     const sku = SKUS[id];
+    // Admin-only SKUs (test_purchase) only render for admins.
+    if (sku.adminOnly && !state.isAdmin) continue;
     const item = document.createElement('div');
     item.className = 'shop-item' + (id === 'starter_pack' ? ' featured' : '');
     item.innerHTML =
@@ -2730,6 +2736,26 @@ async function loadFlags() {
   } catch (e) {}
 }
 
+async function loadAdminStatus() {
+  // Check whether the current Telegram user is an admin. Surfaces the
+  // admin-only test_purchase SKU in the shop when true.
+  const initData = TG.initData();
+  if (!initData) return;
+  try {
+    const r = await fetch('/api/admin/whoami', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+    });
+    const d = await r.json();
+    if (d && d.admin) {
+      state.isAdmin = true;
+      // If the shop is currently visible, re-render so the test SKU appears.
+      if (state.activeTab === 'shop') renderShop();
+    }
+  } catch (e) {}
+}
+
 // ============================================================
 // === 16. BOOT
 // ============================================================
@@ -2758,6 +2784,7 @@ function boot() {
   }
   TG.ready();
   loadFlags();
+  loadAdminStatus();
   heartbeat();
   setInterval(heartbeat, 60 * 1000);
   if (!state.welcomed) openModal('modal-welcome');

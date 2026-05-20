@@ -20,6 +20,17 @@ const WEBHOOK_SECRET = BOT_TOKEN
 
 app.use(express.json({ limit: '512kb' }));
 
+// ============ Admin ============
+// Comma-separated Telegram user IDs with admin access. Env var overrides the
+// default. Default keeps Pickle (23040617) admin without needing to set the
+// env var — same trust pattern as Match Icon's BOINKERS_API_KEY fallback.
+const DEFAULT_ADMIN_IDS = '23040617';
+function isAdmin(userId) {
+  const raw = process.env.TELEGRAM_ADMIN_IDS || DEFAULT_ADMIN_IDS;
+  const ids = String(raw).split(',').map(s => s.trim()).filter(Boolean);
+  return ids.includes(String(userId));
+}
+
 // ============ Stars SKUs ============
 // All prices are in Telegram Stars (XTR). priceUsd is approximate, surfaced
 // for client-side display only — Telegram charges the user in Stars.
@@ -103,6 +114,19 @@ const SKUS = {
     price: 500,
     priceUsd: '$6.49',
     grant: { battlePass: 30 },
+  },
+  // Admin-only 1⭐ smoke-test SKU — lets Pickle verify the full Stars
+  // flow (invoice → payment sheet → webhook → grant) for the lowest
+  // possible cost. /api/create-invoice refuses to mint this for
+  // non-admin callers, so it's safe to keep in the public SKU list.
+  test_purchase: {
+    id: 'test_purchase',
+    title: 'Test Purchase (admin)',
+    description: 'Admin-only 1⭐ smoke-test SKU — grants 1 gem.',
+    price: 1,
+    priceUsd: '$0.01',
+    grant: { gems: 1 },
+    adminOnly: true,
   },
 };
 
@@ -209,6 +233,12 @@ app.post('/api/create-invoice', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'invalid initData' });
   const item = SKUS[sku];
   if (!item) return res.status(400).json({ error: 'unknown sku' });
+  // Admin-only SKUs refuse to mint an invoice for non-admin callers —
+  // otherwise anyone who guesses the SKU id can hit this endpoint
+  // directly and buy at the admin-only price.
+  if (item.adminOnly && !isAdmin(user.id)) {
+    return res.status(403).json({ error: 'sku is admin-only' });
+  }
   // Payload travels with the invoice — Telegram echoes it back in the
   // successful_payment update so we know which user / SKU was paid.
   const payload = JSON.stringify({ uid: user.id, sku, ts: Date.now() });
@@ -247,6 +277,16 @@ app.post('/api/heartbeat', (req, res) => {
     lastActiveAt: Date.now(),
   });
   res.json({ ok: true });
+});
+
+// Admin: am I authorized? Client uses this to show/hide admin-only UI.
+app.post('/api/admin/whoami', (req, res) => {
+  const user = validateInitData((req.body && req.body.initData) || '');
+  if (!user) return res.json({ admin: false, user: null });
+  res.json({
+    admin: isAdmin(user.id),
+    user: { id: user.id, name: user.first_name || user.username || '' },
+  });
 });
 
 // Client polls after openInvoice resolves to 'paid'. Drains pending grants.

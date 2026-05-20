@@ -40,3 +40,7 @@ services:
         sync: false            # set manually in dashboard — secret
       - key: MIXPANEL_TOKEN
         sync: false            # optional — analytics fires only when set
+      - key: TELEGRAM_ADMIN_IDS
+        sync: false            # optional — comma-separated TG user IDs. Code default
+                               # ('23040617' = Pickle) keeps him admin without this set.
+                               # Add more admins here (e.g. "23040617,12345678").
