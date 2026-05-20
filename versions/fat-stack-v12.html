@@ -339,11 +339,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
   width: 48px; height: 32px; border-radius: 12px;
   transition: background 140ms;
 }
-#tab-mascot {
-  width: 32px; height: 32px;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-}
 .tab-btn-label {
   font-size: 10px; font-weight: 800;
   letter-spacing: 0.5px; text-transform: uppercase;
@@ -950,9 +945,7 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       <div class="tab-btn-label" data-i18n="tabShop">Shop</div>
     </button>
     <button class="tab-btn active" data-tab="home">
-      <div class="tab-btn-icon">
-        <canvas id="tab-mascot" width="64" height="64"></canvas>
-      </div>
+      <div class="tab-btn-icon">🟧</div>
       <div class="tab-btn-label" data-i18n="tabHome">Play</div>
     </button>
     <button class="tab-btn" data-tab="earn">
@@ -1405,12 +1398,6 @@ const state = {
   powerHour: null,
   welcomed: false,
   shake: 0,
-  // Tab-bar mascot — tiny canvas inside the Play tab icon. Reacts to gameplay
-  // events so it has visible personality without taking screen space.
-  // Mood transitions to 'idle' over ~700ms.
-  mascotMood: 'idle',            // 'idle' | 'placed' | 'happy' | 'combo' | 'wow' | 'sad'
-  mascotMoodAt: 0,               // ts when mood was set
-  mascotBounce: 0,               // 0..1 — squash intensity, decays per frame
   hintActive: null,              // { slotIdx, gx, gy, cells } — set by useHint
   hintExpiresAt: 0,
   // Loss-demo animation (runs after game-over detected, before modal opens).
@@ -3088,8 +3075,6 @@ function placePieceAt(slot, gx, gy, slotIdx) {
   slot.used = true;
   sfx('place');
   TG.haptic('light');
-  // Default placement reaction — light bounce. Overridden below if a clear hits.
-  setMascotMood('placed', 0.35);
   // Place score: 1 point per cell
   let scoreDelta = placed.length;
   // Line clears
@@ -3103,8 +3088,6 @@ function placePieceAt(slot, gx, gy, slotIdx) {
     scoreDelta += lineScore + comboBonus;
     // XP from clears — 5 per line + 20 bonus on 2+ line combo.
     awardXP(5 * totalLines + (totalLines >= 2 ? 20 : 0), 'line_clear');
-    // Mascot mood: 'combo' for multi-line, 'happy' for single line.
-    setMascotMood(totalLines >= 2 ? 'combo' : 'happy', 0.6 + Math.min(0.4, totalLines * 0.15));
     state.combo += 1;
     state.comboTimer = 1500;
     state.linesClearedThisGame = (state.linesClearedThisGame || 0) + totalLines;
@@ -3182,9 +3165,6 @@ function tick(now) {
   // Screen shake decay
   if (state.shake > 0) state.shake *= 0.85;
   if (state.shake < 0.2) state.shake = 0;
-  // Mascot bounce decay
-  if (state.mascotBounce > 0) state.mascotBounce *= 0.88;
-  if (state.mascotBounce < 0.01) state.mascotBounce = 0;
   // Combo timer decay
   if (state.comboTimer > 0) {
     state.comboTimer -= dt;
@@ -3221,7 +3201,6 @@ function tick(now) {
     }
   }
   drawAll();
-  drawMascotTab();
   requestAnimationFrame(tick);
 }
 
@@ -3284,141 +3263,12 @@ function showComboFlash(combo, lines) {
   sfx('star');
 }
 
-// ============================================================
-// === MASCOT — tiny tab-bar companion that reacts to gameplay
-// ============================================================
-// Drawn into the Play tab icon's <canvas id="tab-mascot">. Mood transitions
-// driven by setMascotMood() at gameplay events; idle bob is procedural.
-// Lives in the tab bar so it stays visible across all tabs without ever
-// covering game content.
-const tabMascot = document.getElementById('tab-mascot');
-const tabMascotCtx = tabMascot ? tabMascot.getContext('2d') : null;
-let mascotPhase = 0;
-
-function setMascotMood(mood, bounceAmt) {
-  state.mascotMood = mood;
-  state.mascotMoodAt = Date.now();
-  if (bounceAmt) state.mascotBounce = Math.min(1, (state.mascotBounce || 0) + bounceAmt);
-}
-
-function drawMascotTab() {
-  if (!tabMascotCtx) return;
-  const W = tabMascot.width, H = tabMascot.height;
-  const c = tabMascotCtx;
-  c.clearRect(0, 0, W, H);
-  mascotPhase += 0.06;
-  const idleBob = Math.sin(mascotPhase) * 1.5;
-  const bounce = state.mascotBounce || 0;
-  // Mood decays toward idle after 700ms.
-  const moodAge = Date.now() - (state.mascotMoodAt || 0);
-  const moodActive = moodAge < 700;
-  const mood = moodActive ? state.mascotMood : 'idle';
-  // Excited moods make the mascot hover a bit higher.
-  const lift = (mood === 'combo' || mood === 'wow') ? -4 : 0;
-  // Sad mood droops down.
-  const droop = (mood === 'sad') ? 3 : 0;
-  // Bounce squash — happy/placed/combo press down, wow stretches up.
-  const sq = bounce;
-  const squashY = mood === 'wow' ? (1 + sq * 0.18) : (1 - sq * 0.22);
-  const squashX = mood === 'wow' ? (1 - sq * 0.08) : (1 + sq * 0.14);
-  c.save();
-  c.translate(W / 2, H / 2 + 4 + idleBob + lift + droop);
-  c.scale(squashX, squashY);
-  // Drop shadow under feet
-  c.fillStyle = 'rgba(0,0,0,0.22)';
-  c.beginPath();
-  c.ellipse(0, 22, 18, 4, 0, 0, Math.PI * 2);
-  c.fill();
-  // Body — gold rounded square
-  const BW = 36, BH = 36;
-  c.fillStyle = '#E89400';       // shadow tint
-  roundedRectPath(c, -BW / 2, -BH / 2 + 3, BW, BH, 9);
-  c.fill();
-  c.fillStyle = '#FFB100';       // face
-  roundedRectPath(c, -BW / 2, -BH / 2, BW, BH, 9);
-  c.fill();
-  // Top highlight stripe
-  c.fillStyle = 'rgba(255,255,255,0.30)';
-  roundedRectPath(c, -BW / 2 + 4, -BH / 2 + 3, BW - 8, 5, 3);
-  c.fill();
-  // Eyes — mood-dependent rendering
-  if (mood === 'wow') {
-    // ⭐ star eyes for big wins
-    drawStarEye(c, -7, -3, 4, '#FFE066');
-    drawStarEye(c,  7, -3, 4, '#FFE066');
-  } else if (mood === 'sad') {
-    // Closed eyes (sad squints)
-    c.strokeStyle = '#2A1B0A';
-    c.lineWidth = 2;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-10, -3); c.lineTo(-4, -3);
-    c.moveTo(  4, -3); c.lineTo(10, -3);
-    c.stroke();
-  } else if (mood === 'combo' || mood === 'happy') {
-    // ^^ happy eyes
-    c.strokeStyle = '#2A1B0A';
-    c.lineWidth = 2.5;
-    c.lineCap = 'round';
-    c.beginPath();
-    c.moveTo(-10, -2); c.lineTo(-7, -5); c.lineTo(-4, -2);
-    c.moveTo(  4, -2); c.lineTo( 7, -5); c.lineTo(10, -2);
-    c.stroke();
-  } else {
-    // Default dot eyes with shine
-    c.fillStyle = '#2A1B0A';
-    c.beginPath(); c.arc(-7, -3, 2.5, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc( 7, -3, 2.5, 0, Math.PI * 2); c.fill();
-    c.fillStyle = 'white';
-    c.beginPath(); c.arc(-6, -4, 1, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc( 8, -4, 1, 0, Math.PI * 2); c.fill();
-  }
-  // Mouth — varies by mood
-  c.strokeStyle = '#2A1B0A';
-  c.lineWidth = 2;
-  c.lineCap = 'round';
-  c.beginPath();
-  if (mood === 'sad') {
-    // Frown
-    c.arc(0, 11, 5, Math.PI + 0.2, 2 * Math.PI - 0.2);
-  } else if (mood === 'combo' || mood === 'wow') {
-    // Big open-mouth smile
-    c.arc(0, 5, 6, 0.1 * Math.PI, 0.9 * Math.PI);
-    c.fillStyle = '#C92C50';
-    c.fill();
-  } else if (mood === 'happy' || mood === 'placed') {
-    // Smile
-    c.arc(0, 5, 5, 0.15 * Math.PI, 0.85 * Math.PI);
-  } else {
-    // Subtle resting smile
-    c.arc(0, 6, 4, 0.2 * Math.PI, 0.8 * Math.PI);
-  }
-  c.stroke();
-  // Cheeks (only when happy/combo/wow)
-  if (mood === 'combo' || mood === 'wow' || mood === 'happy') {
-    c.fillStyle = 'rgba(239,71,111,0.5)';
-    c.beginPath(); c.arc(-12, 3, 2.2, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc( 12, 3, 2.2, 0, Math.PI * 2); c.fill();
-  }
-  c.restore();
-}
-function drawStarEye(c, cx, cy, r, color) {
-  c.save();
-  c.translate(cx, cy);
-  c.fillStyle = color;
-  c.beginPath();
-  for (let i = 0; i < 10; i++) {
-    const angle = (i / 10) * Math.PI * 2 - Math.PI / 2;
-    const rad = i % 2 === 0 ? r : r * 0.45;
-    const x = Math.cos(angle) * rad;
-    const y = Math.sin(angle) * rad;
-    if (i === 0) c.moveTo(x, y); else c.lineTo(x, y);
-  }
-  c.closePath();
-  c.fill();
-  c.restore();
-}
-
+// === Mascot removed in v0.3.1 — was a canvas-drawn chubby cube in the
+// top-right that bounced on placements/clears. Cluttered the increasingly
+// dense top area (XP bar, Power Hour banner, inventory pills, icon
+// buttons). Visual feedback for placements is now carried entirely by
+// the existing screen shake, particles, combo flash, and score popups.
+// `roundedRectPath` is retained because shareCard generation uses it.
 function roundedRectPath(c, x, y, w, h, r) {
   c.beginPath();
   c.moveTo(x + r, y);
@@ -4814,7 +4664,6 @@ function showNextLevelUp() {
   TG.haptic('success');
   sfx('combo');
   fireConfetti(80);
-  setMascotMood('wow', 0.8);
 }
 
 // ============================================================
@@ -4860,7 +4709,6 @@ function showNextAchievement() {
   TG.haptic('success');
   sfx('star');
   fireConfetti(40);
-  setMascotMood('wow', 0.6);
 }
 
 // ============================================================
@@ -5016,8 +4864,6 @@ function onGameOver() {
     return;
   }
   state.gameOver = true;
-  // Mascot goes sad through the loss demo.
-  setMascotMood('sad', 0);
   // Bookkeeping happens immediately (don't wait for the demo) so the streak,
   // counters, mixpanel event, and persisted save survive a mid-demo close.
   updateStreakOnPlay();
