@@ -2040,44 +2040,20 @@ const TG = {
     try { tg.ready(); } catch (e) {}
     try { tg.expand(); } catch (e) {}
     try { tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
-    // Bot API 8.0+ — hides Telegram's native top bar so Fat Stack covers
-    // the entire screen. Older clients silently ignore unknown methods.
-    // Same pattern Match Icon + Slovo use.
-    try { tg.requestFullscreen && tg.requestFullscreen(); } catch (e) {}
     this.applySafeArea();
     if (tg.onEvent) {
-      try { tg.onEvent('viewportChanged',        () => this.applySafeArea()); } catch (e) {}
-      try { tg.onEvent('safeAreaChanged',        () => this.applySafeArea()); } catch (e) {}
+      try { tg.onEvent('viewportChanged', () => this.applySafeArea()); } catch (e) {}
+      try { tg.onEvent('safeAreaChanged', () => this.applySafeArea()); } catch (e) {}
       try { tg.onEvent('contentSafeAreaChanged', () => this.applySafeArea()); } catch (e) {}
-      // Fullscreen events — re-apply insets when state changes (some
-      // Telegram versions fire one event but not the other; subscribe to both
-      // so we never miss a transition).
-      try { tg.onEvent('fullscreenChanged',      () => this.applySafeArea()); } catch (e) {}
-      try { tg.onEvent('fullscreenFailed',       () => this.applySafeArea()); } catch (e) {}
     }
-    // Belt-and-braces — some Telegram versions don't fire the inset events
-    // but the values become available a tick later. Re-poll twice early.
-    setTimeout(() => this.applySafeArea(), 100);
-    setTimeout(() => this.applySafeArea(), 500);
   },
   applySafeArea() {
     if (!tg) return;
     const csai = tg.contentSafeAreaInset || {};
-    const sai  = tg.safeAreaInset || {};
-    let top = Math.max(csai.top || 0, sai.top || 0);
-    let bot = Math.max(csai.bottom || 0, sai.bottom || 0);
-    // Telegram overlays its Close + menu pills ON TOP of the WebView even in
-    // fullscreen mode. The API returns 0 for those overlays, so apply
-    // known-good minimums whenever we're inside Telegram. iOS Dynamic
-    // Island devices need ~90px top; Android's native chrome only needs
-    // ~60px. The API value wins via Math.max if it's larger.
-    const isInTelegram = !!tg.initData;
-    if (isInTelegram) {
-      const isAndroid = (tg.platform || '').toLowerCase() === 'android' || (tg.platform || '').toLowerCase() === 'android_x';
-      top = Math.max(top, isAndroid ? 60 : 90);
-      bot = Math.max(bot, isAndroid ? 8  : 12);
-    }
-    document.documentElement.style.setProperty('--tg-safe-top',    top + 'px');
+    const sai = tg.safeAreaInset || {};
+    const top = Math.max(csai.top || 0, sai.top || 0);
+    const bot = Math.max(csai.bottom || 0, sai.bottom || 0);
+    document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
     document.documentElement.style.setProperty('--tg-safe-bottom', bot + 'px');
   },
   haptic(kind) {
