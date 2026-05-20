@@ -6,9 +6,10 @@
 <meta name="theme-color" content="#FFF6E5">
 <title>Fat Stack</title>
 <!-- Preload the splash hero so it starts downloading in parallel with the
-     page parse, before any other asset. fetchpriority=high tells the
-     browser to prioritize over deferred resources. -->
-<link rel="preload" as="image" href="assets/splash.png" fetchpriority="high">
+     page parse, before any other asset. WebP at 720w/q85 = 94KB (95%
+     smaller than the source PNG). fetchpriority=high tells the browser to
+     prioritize over deferred resources. -->
+<link rel="preload" as="image" href="assets/splash.webp" fetchpriority="high">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root {
@@ -942,7 +943,7 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 </head>
 <body>
 <div class="splash" id="splash">
-  <img class="splash-img" id="splash-img" src="assets/splash.png" alt="Fat Stack" decoding="async" fetchpriority="high" onerror="document.getElementById('splash').classList.add('no-image')">
+  <img class="splash-img" id="splash-img" src="assets/splash.webp" alt="Fat Stack" decoding="async" fetchpriority="high" onerror="document.getElementById('splash').classList.add('no-image')">
   <div class="splash-fallback">FAT STACK</div>
   <div class="splash-hint" id="splash-hint">&nbsp;</div>
   <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
