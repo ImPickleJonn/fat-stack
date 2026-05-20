@@ -156,12 +156,12 @@ People properties (set once on init via `mxEngage`):
 
 ## Boinkers partner mission
 
-The Earn tab includes a "Try Boinkers" mission. URL is currently:
+The Earn tab includes a "Try Boinkers" mission. URL:
 
 ```
-https://t.me/boinker_bot/boinkapp?startapp=campMinemasterFatStack
+https://t.me/boinker_bot/boinkapp?startapp=campFatStack
 ```
 
-`campMinemasterFatStack` is a **placeholder** campaign code. Before going live, get a Fat-Stack-specific campaign code from the Boinkers partner team and swap it in `index.html` at the `MISSIONS` array (search for `play_boinkers`). Using Match Icon's existing campaign code (`campMinemasterMatch3Icon`) would credit Match Icon for these referrals — not what you want.
+`campFatStack` is the Fat-Stack-specific Boinkers referral campaign code — keeps these referrals attributed to Fat Stack (not to Match Icon's `campMinemasterMatch3Icon`).
 
 Optional next step (mirrors Match Icon): add `BOINKERS_API_KEY` env var and an `/api/earn/verify-boinkers` endpoint that hits `partner-reports.boinkers.io/api/partner/user`, so the higher-reward `boinkers-level-3` / `boinkers-spin-30` style missions can verify on the server side. For now the v0.2 mission uses client-side trust (GO → CHECK awards the gems), which is fine for the simple "play a round" variant.

@@ -610,14 +610,14 @@ const MISSIONS = [
   },
   {
     // Mirrors Match Icon's 'mission_play_boinkers_5min' — partner cross-promo.
-    // Client-trust GO→CHECK flow for v0.2 (no server verify yet). Once Pickle
-    // gets a Fat Stack-specific Boinkers campaign code from the partner, swap
-    // `campMinemasterFatStack` in the URL below + add a server verify like
-    // Match Icon's /api/earn/verify-boinkers for the higher-reward variants.
+    // Client-trust GO→CHECK flow for v0.2 (no server verify yet). Campaign
+    // code `campFatStack` is the Fat-Stack-specific referral code. Add a
+    // server verify like Match Icon's /api/earn/verify-boinkers later for
+    // higher-reward variants (boinkers-level-3, boinkers-spin-30, etc.).
     id: 'play_boinkers', icon: '🦫',
     tKey: 'missPlayBoinkers', subKey: 'missPlayBoinkersSub',
     reward: 150, type: 'one_time',
-    url: 'https://t.me/boinker_bot/boinkapp?startapp=campMinemasterFatStack',
+    url: 'https://t.me/boinker_bot/boinkapp?startapp=campFatStack',
     mode: 'go_check',
     provider: 'Boinkers',
   },
