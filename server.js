@@ -244,6 +244,59 @@ app.use(express.static(__dirname, {
   },
 }));
 
+// Share-card PNGs live on the persistent disk so they survive redeploys.
+// Telegram's URL preview fetches these for the inline image bubble when
+// someone shares a Fat Stack result.
+const SHARES_DIR = path.join(DATA_DIR, 'shares');
+try { if (!fs.existsSync(SHARES_DIR)) fs.mkdirSync(SHARES_DIR, { recursive: true }); } catch (e) {}
+app.use('/shares', express.static(SHARES_DIR, {
+  maxAge: '7d',                 // OK to cache — each filename has a fresh uuid
+  setHeaders: (res) => { res.setHeader('Content-Type', 'image/png'); },
+}));
+
+// Accept a base64-encoded PNG generated client-side, save it under a fresh
+// UUID, and return the public URL. Auth via Telegram initData prevents
+// random callers filling our disk with garbage. Garbage-collected by age
+// in a small interval below — share cards are read-once and quickly stale.
+app.post('/api/share/upload', (req, res) => {
+  const { initData, dataUrl } = req.body || {};
+  const user = validateInitData(initData || '');
+  if (!user) return res.status(401).json({ error: 'unauthenticated' });
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) {
+    return res.status(400).json({ error: 'expected dataUrl image/png' });
+  }
+  const b64 = dataUrl.slice('data:image/png;base64,'.length);
+  // ~512KB cap — share card is 1080x1080 PNG, ~150-300KB typical. Reject
+  // anything huge to avoid disk-fill abuse.
+  if (b64.length > 1024 * 1024) return res.status(413).json({ error: 'too large' });
+  const id = crypto.randomBytes(8).toString('hex');
+  const filename = id + '.png';
+  const target = path.join(SHARES_DIR, filename);
+  try {
+    fs.writeFileSync(target, Buffer.from(b64, 'base64'));
+  } catch (e) {
+    return res.status(500).json({ error: 'write failed' });
+  }
+  const baseUrl = getPublicUrl();
+  const url = (baseUrl ? baseUrl : '') + '/shares/' + filename;
+  res.json({ url, id });
+});
+
+// GC old share PNGs every hour — keep last 48h so Telegram's URL-preview
+// cache has plenty of time to fetch them, then prune.
+setInterval(() => {
+  try {
+    const now = Date.now();
+    const TTL = 48 * 60 * 60 * 1000;
+    for (const f of fs.readdirSync(SHARES_DIR)) {
+      if (!f.endsWith('.png')) continue;
+      const p = path.join(SHARES_DIR, f);
+      const st = fs.statSync(p);
+      if (now - st.mtimeMs > TTL) fs.unlinkSync(p);
+    }
+  } catch (e) {}
+}, 60 * 60 * 1000);
+
 // Canonical "where is this server reachable from?" helper.
 function getPublicUrl() {
   const d = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
@@ -252,6 +305,22 @@ function getPublicUrl() {
 }
 function buildPlayUrl() {
   return getPublicUrl() || 'http://localhost:' + PORT;
+}
+
+// ============ Bot identity ============
+// Looked up once at boot via Telegram getMe so the client can use it to
+// build a t.me/<bot> link inside the share message. Surfaced via /api/flags.
+let BOT_USERNAME = '';
+async function fetchBotIdentity() {
+  if (!BOT_TOKEN) return;
+  try {
+    const r = await fetch(`${TELEGRAM_API}/getMe`);
+    const d = await r.json();
+    if (d && d.ok && d.result && d.result.username) {
+      BOT_USERNAME = d.result.username;
+      console.log('[bot] username @' + BOT_USERNAME);
+    }
+  } catch (e) { console.error('[bot] getMe failed:', e.message); }
 }
 
 // ============ API ============
@@ -264,6 +333,7 @@ app.get('/api/flags', (req, res) => {
     iap: !!BOT_TOKEN,
     publicUrl: getPublicUrl(),
     mixpanel_token: process.env.MIXPANEL_TOKEN || '',
+    bot_username: BOT_USERNAME,
   });
 });
 
@@ -733,6 +803,7 @@ app.listen(PORT, () => {
   console.log(`Fat Stack serving on port ${PORT}`);
   console.log(`IAP: ${BOT_TOKEN ? 'enabled' : 'DISABLED — set BOT_TOKEN env var to turn on'}`);
   if (BOT_TOKEN) {
+    fetchBotIdentity();
     setInterval(notifyLoop, FIVE_MIN);
     console.log('[notify] loop armed — every 5 min');
   }

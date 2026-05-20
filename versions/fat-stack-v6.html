@@ -521,126 +521,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 .skin-card .lock-icon {
   position: absolute; top: 4px; right: 6px; font-size: 12px;
 }
-
-/* Spin Wheel card in Earn tab */
-.spin-card {
-  background: linear-gradient(135deg, #9D4EDD, #5A189A);
-  border-radius: 18px; padding: 16px 14px;
-  box-shadow: 0 5px 0 #3C0F73;
-  margin-bottom: 16px;
-  text-align: center; color: white;
-}
-.spin-card .s-title { font-size: 16px; font-weight: 900; margin-bottom: 4px; }
-.spin-card .s-sub   { font-size: 11px; opacity: 0.85; margin-bottom: 12px; }
-.spin-wheel-wrap {
-  position: relative;
-  width: 220px; height: 220px;
-  margin: 0 auto 12px;
-}
-#spin-canvas {
-  width: 220px; height: 220px;
-  display: block;
-  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.35));
-}
-.spin-pointer {
-  position: absolute; top: -4px; left: 50%;
-  transform: translateX(-50%);
-  width: 0; height: 0;
-  border-left: 12px solid transparent;
-  border-right: 12px solid transparent;
-  border-top: 18px solid #FFE066;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-  z-index: 2;
-}
-.spin-btn {
-  display: inline-block; padding: 12px 28px;
-  background: #FFE066; color: #2A1B0A;
-  border: none; border-radius: 999px;
-  font-weight: 900; font-size: 14px;
-  font-family: inherit; cursor: pointer;
-  box-shadow: 0 4px 0 #C5B22A;
-  transition: transform 80ms;
-}
-.spin-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 #C5B22A; }
-.spin-btn:disabled {
-  opacity: 0.6; cursor: default; box-shadow: none;
-}
-
-/* Shop loader overlay (covers the shop grid while invoice is being minted) */
-.shop-loader {
-  position: fixed; inset: 0;
-  background: rgba(0,0,0,0.65);
-  z-index: 90; display: none;
-  align-items: center; justify-content: center;
-  backdrop-filter: blur(3px);
-}
-.shop-loader.show { display: flex; }
-.spinner {
-  width: 56px; height: 56px;
-  border: 5px solid rgba(255,255,255,0.2);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 800ms linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-.shop-loader .lbl {
-  position: absolute; top: 60%; left: 0; right: 0;
-  text-align: center; color: white;
-  font-weight: 800; font-size: 14px;
-  letter-spacing: 0.5px;
-}
-
-/* Celebration modal */
-.celebrate-card {
-  text-align: center; padding: 4px 0 0;
-}
-.celebrate-card .c-icon {
-  font-size: 72px; line-height: 1;
-  animation: celebrateBounce 600ms cubic-bezier(.18,1.2,.4,1) both;
-  margin: 8px 0 4px;
-}
-@keyframes celebrateBounce {
-  0%   { transform: scale(0) rotate(-15deg); opacity: 0; }
-  60%  { transform: scale(1.18) rotate(6deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); }
-}
-.celebrate-card .c-name {
-  font-size: 22px; font-weight: 900; color: var(--text); margin-bottom: 4px;
-}
-.celebrate-card .c-grants {
-  display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
-  margin: 16px 0;
-}
-.celebrate-card .c-grant-pill {
-  background: var(--board-bg);
-  padding: 6px 14px; border-radius: 999px;
-  font-weight: 900; font-size: 14px; color: var(--text);
-  box-shadow: 0 3px 0 var(--shadow);
-}
-.confetti-layer {
-  position: fixed; inset: 0; pointer-events: none; z-index: 110;
-  overflow: hidden;
-}
-.confetti {
-  position: absolute; top: -20px;
-  width: 10px; height: 14px;
-  border-radius: 2px;
-  animation: confettiFall 2400ms cubic-bezier(.36,.07,.66,.92) forwards;
-}
-@keyframes confettiFall {
-  0%   { transform: translate(0, -40px) rotate(0); opacity: 1; }
-  100% { transform: translate(var(--cx, 0), 110vh) rotate(720deg); opacity: 0.5; }
-}
-
-/* Spin-result modal — small variant */
-.spin-result-icon {
-  font-size: 64px; text-align: center; margin: 8px 0 4px;
-  animation: celebrateBounce 600ms cubic-bezier(.18,1.2,.4,1) both;
-}
-.spin-result-label {
-  text-align: center; font-size: 26px; font-weight: 900;
-  color: var(--accent-dark); margin-bottom: 8px;
-}
 </style>
 </head>
 <body>
@@ -707,15 +587,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       <div class="chest-days" id="chest-days"></div>
       <button class="chest-btn" id="chest-btn" data-action="claim-chest" data-i18n="chestClaim">Claim today</button>
     </div>
-    <div class="spin-card">
-      <div class="s-title" data-i18n="spinTitle">Daily Spin</div>
-      <div class="s-sub" id="spin-sub" data-i18n="spinSub">One free spin every 24 hours</div>
-      <div class="spin-wheel-wrap">
-        <div class="spin-pointer"></div>
-        <canvas id="spin-canvas" width="440" height="440"></canvas>
-      </div>
-      <button class="spin-btn" id="spin-btn" data-action="spin" data-i18n="spinNow">SPIN</button>
-    </div>
     <div id="missions-list"></div>
   </div>
 </div>
@@ -740,11 +611,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 
 <div class="combo-flash" id="combo-flash"></div>
 <div class="toast" id="toast"></div>
-<div class="shop-loader" id="shop-loader">
-  <div class="spinner"></div>
-  <div class="lbl" data-i18n="openingShop">Opening Stars checkout…</div>
-</div>
-<div class="confetti-layer" id="confetti-layer"></div>
 
 <div class="modal-bg" id="modal-welcome">
   <div class="modal">
@@ -827,27 +693,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
   </div>
 </div>
 
-<div class="modal-bg" id="modal-celebrate">
-  <div class="modal">
-    <div class="celebrate-card">
-      <div class="c-icon" id="celebrate-icon">🎉</div>
-      <h2 data-i18n="purchaseSuccess" style="margin:0;">Purchase complete!</h2>
-      <div class="c-name" id="celebrate-name">—</div>
-      <div class="c-grants" id="celebrate-grants"></div>
-    </div>
-    <button class="btn" data-action="close-modal" data-i18n="awesome">Awesome!</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-spin-result">
-  <div class="modal" style="max-width:320px;">
-    <div class="spin-result-icon" id="spin-result-icon">🎰</div>
-    <div class="spin-result-label" id="spin-result-label">—</div>
-    <p style="text-align:center; color:var(--text-soft); font-size:13px;" data-i18n="spinComeback">Come back tomorrow for another spin!</p>
-    <button class="btn" data-action="close-modal" data-i18n="awesome">Awesome!</button>
-  </div>
-</div>
-
 <div class="modal-bg" id="modal-confirm-reset">
   <div class="modal">
     <h2 data-i18n="resetTitle">Reset progress?</h2>
@@ -887,20 +732,6 @@ const SHOP_ORDER = ['starter_pack', 'revive', 'hint_pack', 'no_bust', 'gems_smal
 
 // Daily login chest — 7-day cycle, escalating rewards in gems.
 const CHEST_REWARDS = [25, 50, 75, 100, 150, 250, 500];
-
-// Daily Spin Wheel — one free spin per UTC day. 8 weighted segments.
-// Higher-value rewards are rare to keep the dopamine right; the wheel
-// almost always lands on something but the "BIG" wins are the hook.
-const SPIN_SEGMENTS = [
-  { id: 'gems_50',   label: '+50 💎',  reward: { gems: 50 },     color: '#06D6A0', weight: 28 },
-  { id: 'gems_100',  label: '+100 💎', reward: { gems: 100 },    color: '#118AB2', weight: 22 },
-  { id: 'gems_200',  label: '+200 💎', reward: { gems: 200 },    color: '#9D4EDD', weight: 14 },
-  { id: 'hint_1',    label: '+1 💡',   reward: { hints: 1 },     color: '#FFD166', weight: 12 },
-  { id: 'revive_1',  label: '+1 💖',   reward: { revives: 1 },   color: '#EF476F', weight: 9 },
-  { id: 'gems_500',  label: '+500 💎', reward: { gems: 500 },    color: '#FF6B35', weight: 8 },
-  { id: 'no_bust_1', label: '+1 🛡',   reward: { noBust: 1 },    color: '#5B8DEF', weight: 5 },
-  { id: 'gems_1000', label: '+1000 💎',reward: { gems: 1000 },   color: '#FFB100', weight: 2 },
-];
 
 // Skin catalog. 'default' is free; others must be in state.skins to equip.
 // Swatch colors are display-only (the actual palette comes from CSS [data-skin]).
@@ -986,9 +817,6 @@ const state = {
   gamesPlayedYMD: '',
   lastDailyYMD: '',
   activeTab: 'home',
-  // Daily Spin Wheel
-  spinClaimedYMD: '',            // YMD of last free spin
-  lastSpinResult: null,          // { segId, label } — most recent result, for the Earn tile
   settings: {
     sound: true,
     haptics: true,
@@ -1004,15 +832,7 @@ const state = {
   paintSkin: null,
   iapEnabled: false,
   isAdmin: false,                // set by /api/admin/whoami on boot
-  botUsername: '',               // populated from /api/flags — used in share text
   gameOver: false,
-  // Spin wheel runtime
-  spinAngle: 0,                  // current rotation in radians
-  spinning: false,
-  spinTargetSeg: null,
-  // Shop loader + celebration
-  buying: null,                  // { skuId } — drives shop loader spinner
-  pendingCelebration: null,      // { sku, grant } — queued post-purchase modal
   welcomed: false,
   mascotBounce: 0,
   shake: 0,
@@ -1195,18 +1015,6 @@ const STRINGS = {
     dailyDoneTitle: 'Daily complete!',
     dailyDoneText: 'You scored {score}. Today\'s board was the same for every player.',
     dailyRankText: 'You scored {score} — rank #{rank} on today\'s leaderboard.',
-    spinTitle: 'Daily Spin',
-    spinSub: 'One free spin every 24 hours',
-    spinNow: 'SPIN',
-    spinAlready: 'Already spun today — come back tomorrow',
-    spinAlreadyShort: 'COME BACK TOMORROW',
-    spinLast: 'You won {reward}',
-    spinComeback: 'Come back tomorrow for another spin!',
-    purchaseSuccess: 'Purchase complete!',
-    awesome: 'Awesome!',
-    openingShop: 'Opening Stars checkout…',
-    newScore: 'I JUST SCORED',
-    shareCardCta: 'BEAT MY SCORE 👉',
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -1280,18 +1088,6 @@ const STRINGS = {
     dailyDoneTitle: 'Ежедневный пройден!',
     dailyDoneText: 'Ты набрал {score}. Сегодня у всех была одинаковая раскладка.',
     dailyRankText: 'Ты набрал {score} — место #{rank} в сегодняшней таблице.',
-    spinTitle: 'Ежедневный спин',
-    spinSub: 'Одно бесплатное вращение раз в 24 часа',
-    spinNow: 'КРУТИ',
-    spinAlready: 'Сегодня уже крутил — возвращайся завтра',
-    spinAlreadyShort: 'ЗАВТРА ЕЩЁ РАЗ',
-    spinLast: 'Ты выиграл {reward}',
-    spinComeback: 'Возвращайся завтра за новым спином!',
-    purchaseSuccess: 'Покупка совершена!',
-    awesome: 'Класс!',
-    openingShop: 'Открываю оплату Stars…',
-    newScore: 'МОЙ СЧЁТ',
-    shareCardCta: 'ПОБЕЙ МОЙ СЧЁТ 👉',
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -1801,11 +1597,11 @@ const TG = {
   userLang() {
     return (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) || '';
   },
-  // Legacy text-only fallback. New share path is shareResultWithImage() below.
   shareUrl() {
     const text = t('shareText', { score: state.score });
-    const botLink = state.botUsername ? ('https://t.me/' + state.botUsername) : 'https://t.me/';
-    const u = 'https://t.me/share/url?url=' + encodeURIComponent(botLink) + '&text=' + encodeURIComponent(text);
+    const u = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
+      ? ('https://t.me/share/url?url=' + encodeURIComponent('https://t.me/') + '&text=' + encodeURIComponent(text))
+      : 'https://t.me/share/url?text=' + encodeURIComponent(text);
     try { tg && tg.openTelegramLink ? tg.openTelegramLink(u) : window.open(u, '_blank'); } catch (e) { window.open(u, '_blank'); }
   },
   openInvoice(link, cb) {
@@ -3013,165 +2809,9 @@ function grantMissionReward(m) {
   track('mission_complete', { mission_id: m.id, reward: m.reward, mission_type: m.type });
 }
 
-// ============================================================
-// === SPIN WHEEL
-// ============================================================
-
-function spinAvailableToday() {
-  return state.spinClaimedYMD !== ymd();
-}
-
-function drawSpinWheel() {
-  const cvs = document.getElementById('spin-canvas');
-  if (!cvs) return;
-  const ctx2 = cvs.getContext('2d');
-  const W = cvs.width, H = cvs.height;
-  const cx = W / 2, cy = H / 2;
-  const radius = Math.min(W, H) / 2 - 8;
-  ctx2.clearRect(0, 0, W, H);
-  // Rotate the whole wheel by state.spinAngle.
-  ctx2.save();
-  ctx2.translate(cx, cy);
-  ctx2.rotate(state.spinAngle);
-  const N = SPIN_SEGMENTS.length;
-  const seg = (Math.PI * 2) / N;
-  for (let i = 0; i < N; i++) {
-    const s = SPIN_SEGMENTS[i];
-    const a0 = i * seg - Math.PI / 2;
-    const a1 = a0 + seg;
-    ctx2.beginPath();
-    ctx2.moveTo(0, 0);
-    ctx2.arc(0, 0, radius, a0, a1);
-    ctx2.closePath();
-    ctx2.fillStyle = s.color;
-    ctx2.fill();
-    // Segment label
-    ctx2.save();
-    const mid = a0 + seg / 2;
-    ctx2.rotate(mid);
-    ctx2.translate(radius * 0.62, 0);
-    ctx2.fillStyle = '#ffffff';
-    ctx2.font = '900 26px -apple-system, "Segoe UI", Roboto, sans-serif';
-    ctx2.textAlign = 'center';
-    ctx2.textBaseline = 'middle';
-    ctx2.shadowColor = 'rgba(0,0,0,0.5)';
-    ctx2.shadowBlur = 3;
-    ctx2.shadowOffsetY = 1;
-    ctx2.fillText(s.label, 0, 0);
-    ctx2.restore();
-  }
-  // Center hub
-  ctx2.beginPath();
-  ctx2.arc(0, 0, radius * 0.16, 0, Math.PI * 2);
-  ctx2.fillStyle = '#FFE066';
-  ctx2.fill();
-  ctx2.lineWidth = 5;
-  ctx2.strokeStyle = '#C5B22A';
-  ctx2.stroke();
-  ctx2.restore();
-  // Outer ring
-  ctx2.beginPath();
-  ctx2.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx2.lineWidth = 6;
-  ctx2.strokeStyle = '#FFE066';
-  ctx2.stroke();
-}
-
-function pickSpinSegment() {
-  let total = 0;
-  for (const s of SPIN_SEGMENTS) total += s.weight;
-  let r = Math.random() * total;
-  for (let i = 0; i < SPIN_SEGMENTS.length; i++) {
-    r -= SPIN_SEGMENTS[i].weight;
-    if (r <= 0) return i;
-  }
-  return 0;
-}
-
-function spinWheel() {
-  if (state.spinning) return;
-  if (!spinAvailableToday()) { toast(t('spinAlready')); return; }
-  state.spinning = true;
-  const targetIdx = pickSpinSegment();
-  state.spinTargetSeg = targetIdx;
-  const N = SPIN_SEGMENTS.length;
-  const segAngle = (Math.PI * 2) / N;
-  // Land with the chosen segment's MIDDLE under the top pointer (at -PI/2 in
-  // canvas coords). Wheel rotates `rotation` rad cw; we add 5+ full spins.
-  const startAngle = state.spinAngle % (Math.PI * 2);
-  const targetMid = -Math.PI / 2 - (targetIdx * segAngle + segAngle / 2);
-  // Bring targetMid into [startAngle, startAngle + 2π) range, then add
-  // FULL_SPINS * 2π more for the dramatic rotation.
-  const FULL_SPINS = 5;
-  let delta = ((targetMid - startAngle) % (Math.PI * 2) + (Math.PI * 2)) % (Math.PI * 2);
-  delta += FULL_SPINS * Math.PI * 2;
-  const startTs = Date.now();
-  const DUR = 3200;
-  const initial = startAngle;
-  // Custom easing — fast accel, long decel, tight settle.
-  function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
-  TG.haptic('medium');
-  function frame() {
-    const elapsed = Date.now() - startTs;
-    const t = Math.min(1, elapsed / DUR);
-    state.spinAngle = initial + delta * easeOutQuart(t);
-    drawSpinWheel();
-    // Tick haptic on each segment crossing for tactile feedback.
-    if (t < 1) {
-      requestAnimationFrame(frame);
-    } else {
-      state.spinning = false;
-      finishSpin(targetIdx);
-    }
-  }
-  requestAnimationFrame(frame);
-}
-
-function finishSpin(idx) {
-  const seg = SPIN_SEGMENTS[idx];
-  // Apply reward via the same applyGrant pipe so HUD pills + skin equip work.
-  applyGrant(seg.reward);
-  state.spinClaimedYMD = ymd();
-  state.lastSpinResult = { segId: seg.id, label: seg.label };
-  updateInventoryPills();
-  updateSpinUI();
-  save();
-  sfx('star');
-  TG.haptic('success');
-  // Result modal.
-  document.getElementById('spin-result-icon').textContent =
-    seg.id.startsWith('gems')   ? '💎' :
-    seg.id.startsWith('hint')   ? '💡' :
-    seg.id.startsWith('revive') ? '💖' :
-    seg.id.startsWith('no_bust')? '🛡' : '🎰';
-  document.getElementById('spin-result-label').textContent = seg.label;
-  openModal('modal-spin-result');
-  // Light confetti to celebrate any win.
-  fireConfetti(seg.id === 'gems_1000' ? 60 : 25);
-  track('spin_complete', { reward_id: seg.id, available_again: 'tomorrow' });
-}
-
-function updateSpinUI() {
-  const btn = document.getElementById('spin-btn');
-  const sub = document.getElementById('spin-sub');
-  if (!btn) return;
-  if (spinAvailableToday()) {
-    btn.disabled = false;
-    btn.textContent = t('spinNow');
-    if (sub) sub.textContent = t('spinSub');
-  } else {
-    btn.disabled = true;
-    btn.textContent = t('spinAlreadyShort');
-    if (sub && state.lastSpinResult) sub.textContent = t('spinLast', { reward: state.lastSpinResult.label });
-  }
-}
-
 function renderEarn() {
   // Gem balance pill
   document.getElementById('gem-balance').textContent = formatNum(state.gems);
-  // Spin wheel — paint + button state.
-  drawSpinWheel();
-  updateSpinUI();
   // Chest grid
   const day = chestDayForToday();
   const grid = document.getElementById('chest-days');
@@ -3238,8 +2878,7 @@ document.addEventListener('click', (e) => {
   }
   else if (action === 'revive') { tryRevive(); }
   else if (action === 'restart') { endDailyMode(); newGame(); closeAllModals(); switchTab('home'); }
-  else if (action === 'share-score') { shareResultWithImage(); }
-  else if (action === 'spin') { spinWheel(); }
+  else if (action === 'share-score') { TG.shareUrl(); }
   else if (action === 'daily') { closeAllModals(); switchTab('home'); startDaily(); }
   else if (action === 'claim-chest') { claimChest(); }
   else if (action === 'mission-go') {
@@ -3394,20 +3033,11 @@ function populateLangSelect() {
 // === 12. STARS IAP
 // ============================================================
 
-function showShopLoader(show) {
-  const el = document.getElementById('shop-loader');
-  if (!el) return;
-  el.classList.toggle('show', !!show);
-}
-
 async function buySku(skuId) {
-  if (state.buying) return;     // debounce double-taps
   if (!state.iapEnabled) { toast(t('iapDisabled')); track('iap_unavailable', { sku: skuId }); return; }
   const initData = TG.initData();
   if (!initData) { toast(t('iapDisabled')); return; }
   const sku = SKUS[skuId] || {};
-  state.buying = skuId;
-  showShopLoader(true);
   track('iap_attempt', { sku: skuId, stars: sku.price || 0 });
   try {
     const r = await fetch('/api/create-invoice', {
@@ -3417,22 +3047,14 @@ async function buySku(skuId) {
     });
     const data = await r.json();
     if (!r.ok || !data.link) {
-      showShopLoader(false);
-      state.buying = null;
       toast(t('purchaseFailed'));
       track('iap_invoice_failed', { sku: skuId, error: (data && data.error) || 'http_' + r.status });
       return;
     }
-    // Telegram's native Stars sheet takes over now — hide the loader the
-    // moment we hand off so the user sees the native UI cleanly.
-    showShopLoader(false);
     TG.openInvoice(data.link, async (status) => {
-      state.buying = null;
       if (status === 'paid') {
         track('iap_purchase', { sku: skuId, stars: sku.price || 0 });
-        // Stash the SKU for the celebration modal — applied below.
-        state.pendingCelebration = { skuId, sku };
-        // Poll for grant.
+        // Poll for grant
         for (let i = 0; i < 6; i++) {
           await new Promise(res => setTimeout(res, 700));
           try {
@@ -3445,72 +3067,25 @@ async function buySku(skuId) {
             if (pdata.purchases && pdata.purchases.length > 0) {
               for (const p of pdata.purchases) applyGrant(p.grant);
               save();
+              toast(t('purchased'));
               renderShop();
-              showCelebration(skuId, pdata.purchases[0].grant);
               return;
             }
           } catch (e) {}
         }
-        // Webhook grant never landed in the poll window — still celebrate,
-        // user pays for the experience whether we got the grant yet or not.
-        showCelebration(skuId, sku.grant || null);
+        // Even if we didn't get the grant via poll, mark as purchased.
+        toast(t('purchased'));
       } else if (status === 'cancelled') {
         track('iap_cancelled', { sku: skuId, stars: sku.price || 0 });
+        toast(t('purchaseFailed'));
       } else if (status === 'failed') {
         track('iap_failed', { sku: skuId, stars: sku.price || 0 });
         toast(t('purchaseFailed'));
       }
     });
   } catch (e) {
-    showShopLoader(false);
-    state.buying = null;
     track('iap_error', { sku: skuId, error: String(e && e.message || e) });
     toast(t('purchaseFailed'));
-  }
-}
-
-function showCelebration(skuId, grant) {
-  const sku = SKUS[skuId];
-  if (!sku) return;
-  document.getElementById('celebrate-icon').textContent = sku.emoji || '🎁';
-  document.getElementById('celebrate-name').textContent = t(sku.tKey);
-  // Compose grant pills.
-  const pills = [];
-  if (grant) {
-    if (grant.gems)    pills.push('💎 +' + formatNum(grant.gems));
-    if (grant.revives) pills.push('💖 +' + grant.revives);
-    if (grant.hints)   pills.push('💡 +' + grant.hints);
-    if (grant.noBust)  pills.push('🛡 +' + grant.noBust);
-    if (grant.skins && grant.skins.length) {
-      for (const s of grant.skins) pills.push('🎨 ' + (t('skin' + s.charAt(0).toUpperCase() + s.slice(1)) || s));
-    }
-    if (grant.battlePass) pills.push('🎖 ' + grant.battlePass + 'd');
-  }
-  const wrap = document.getElementById('celebrate-grants');
-  wrap.innerHTML = pills.map(p => '<div class="c-grant-pill">' + p + '</div>').join('');
-  openModal('modal-celebrate');
-  TG.haptic('success');
-  sfx('star');
-  fireConfetti(80);
-}
-
-function fireConfetti(count) {
-  const layer = document.getElementById('confetti-layer');
-  if (!layer) return;
-  const colors = ['#FF6B35', '#06D6A0', '#9D4EDD', '#118AB2', '#EF476F', '#FFD166', '#FFB100'];
-  const W = window.innerWidth;
-  for (let i = 0; i < count; i++) {
-    const el = document.createElement('div');
-    el.className = 'confetti';
-    const x = Math.random() * W;
-    const cx = (Math.random() - 0.5) * 240;
-    el.style.left = x + 'px';
-    el.style.setProperty('--cx', cx + 'px');
-    el.style.background = colors[Math.floor(Math.random() * colors.length)];
-    el.style.animationDelay = (Math.random() * 200) + 'ms';
-    el.style.animationDuration = (1800 + Math.random() * 900) + 'ms';
-    layer.appendChild(el);
-    setTimeout(() => el.remove(), 3200);
   }
 }
 
@@ -3589,8 +3164,6 @@ function save() {
       activeTab: state.activeTab,
       dailyBestToday: state.dailyBestToday,
       dailyYMD: state.dailyYMD,
-      spinClaimedYMD: state.spinClaimedYMD,
-      lastSpinResult: state.lastSpinResult,
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
   } catch (e) {}
@@ -3622,8 +3195,6 @@ function load() {
     if (typeof s.gamesPlayedToday === 'number') state.gamesPlayedToday = s.gamesPlayedToday;
     if (s.gamesPlayedYMD) state.gamesPlayedYMD = s.gamesPlayedYMD;
     if (s.activeTab) state.activeTab = s.activeTab;
-    if (s.spinClaimedYMD) state.spinClaimedYMD = s.spinClaimedYMD;
-    if (s.lastSpinResult && typeof s.lastSpinResult === 'object') state.lastSpinResult = s.lastSpinResult;
     // Daily best — reset if it's from a previous day.
     if (s.dailyYMD === ymd() && typeof s.dailyBestToday === 'number') {
       state.dailyBestToday = s.dailyBestToday;
@@ -3803,119 +3374,6 @@ function escapeHtml(s) {
 }
 
 // ============================================================
-// === NATIVE SHARE — image + link (Telegram inline preview)
-// ============================================================
-
-// Render a 1080x1080 PNG of the player's result on a hidden canvas. Includes
-// the Fat Stack logo, the score, a stylized mini-board with their final
-// state, and a CTA. Returns a base64 dataURL.
-function renderShareCard() {
-  const W = 1080, H = 1080;
-  const c = document.createElement('canvas');
-  c.width = W; c.height = H;
-  const g = c.getContext('2d');
-  // Background gradient
-  const grad = g.createLinearGradient(0, 0, 0, H);
-  grad.addColorStop(0, '#FFB100');
-  grad.addColorStop(1, '#FF6B35');
-  g.fillStyle = grad;
-  g.fillRect(0, 0, W, H);
-  // Soft white card panel
-  g.fillStyle = '#FFF6E5';
-  roundedRectPath(g, 60, 60, W - 120, H - 120, 48);
-  g.fill();
-  // Top brand bar
-  g.fillStyle = '#2A1B0A';
-  g.font = '900 88px -apple-system, "Segoe UI", Roboto, sans-serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'top';
-  g.fillText('🟧 FAT STACK', W / 2, 110);
-  // Subtitle
-  g.fillStyle = '#6A5135';
-  g.font = '700 36px -apple-system, "Segoe UI", Roboto, sans-serif';
-  g.fillText(state.dailyMode ? '🎯 DAILY CHALLENGE' : t('newScore') || 'I JUST SCORED', W / 2, 220);
-  // Big score
-  g.fillStyle = '#E89400';
-  g.font = '900 220px -apple-system, "Segoe UI", Roboto, sans-serif';
-  g.fillText(formatNum(state.score), W / 2, 300);
-  // Mini-board snapshot (8x8 tiles), centered
-  const boardSize = 600;
-  const cell = boardSize / GRID;
-  const bx = (W - boardSize) / 2;
-  const by = 600;
-  g.fillStyle = '#FFE9C5';
-  roundedRectPath(g, bx - 16, by - 16, boardSize + 32, boardSize + 32, 24);
-  g.fill();
-  for (let y = 0; y < GRID; y++) {
-    for (let x = 0; x < GRID; x++) {
-      const v = state.board[y][x];
-      const cx = bx + x * cell;
-      const cy = by + y * cell;
-      // empty cell
-      g.fillStyle = '#F4DFB1';
-      roundedRectPath(g, cx + 4, cy + 4, cell - 8, cell - 8, 8);
-      g.fill();
-      if (v >= 0) {
-        // tile shadow
-        g.fillStyle = tileColor(v, true);
-        roundedRectPath(g, cx + 6, cy + 12, cell - 12, cell - 12, 8);
-        g.fill();
-        g.fillStyle = tileColor(v, false);
-        roundedRectPath(g, cx + 6, cy + 6, cell - 12, cell - 12, 8);
-        g.fill();
-      }
-    }
-  }
-  // CTA bottom
-  g.fillStyle = '#2A1B0A';
-  g.font = '900 48px -apple-system, "Segoe UI", Roboto, sans-serif';
-  g.fillText(t('shareCardCta') || 'BEAT MY SCORE 👉', W / 2, H - 180);
-  g.fillStyle = '#E89400';
-  g.font = '900 42px -apple-system, "Segoe UI", Roboto, sans-serif';
-  const botHandle = state.botUsername ? ('t.me/' + state.botUsername) : 't.me/FatStack';
-  g.fillText(botHandle, W / 2, H - 120);
-  return c.toDataURL('image/png');
-}
-
-async function shareResultWithImage() {
-  // Tap acknowledgement — share takes ~1-2s to upload, give immediate feedback.
-  const dataUrl = renderShareCard();
-  let imageUrl = null;
-  const initData = TG.initData();
-  if (initData) {
-    try {
-      const r = await fetch('/api/share/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, dataUrl }),
-      });
-      const d = await r.json();
-      if (d && d.url) imageUrl = d.url;
-    } catch (e) {}
-  }
-  // Compose the share message. Telegram's URL preview will fetch the image
-  // URL and show it inline in the receiving chat. The text mentions the
-  // bot so the recipient has a clickable "@FatStackBot" / "t.me/..." path.
-  const botHandle = state.botUsername ? ('@' + state.botUsername) : '@FatStack';
-  const text = t('shareText', { score: formatNum(state.score) }) + ' ' + botHandle;
-  let shareLink;
-  if (imageUrl) {
-    // Share the image URL as the link — Telegram inlines image previews
-    // when the URL Content-Type is image/*. Text appears as the caption.
-    shareLink = 'https://t.me/share/url?url=' + encodeURIComponent(imageUrl) + '&text=' + encodeURIComponent(text);
-  } else {
-    // Fallback to text-only share with the bot link.
-    const botLink = state.botUsername ? ('https://t.me/' + state.botUsername) : 'https://t.me/';
-    shareLink = 'https://t.me/share/url?url=' + encodeURIComponent(botLink) + '&text=' + encodeURIComponent(text);
-  }
-  track('share_clicked', { score: state.score, has_image: !!imageUrl, mode: state.dailyMode ? 'daily' : 'regular' });
-  try {
-    if (tg && tg.openTelegramLink) tg.openTelegramLink(shareLink);
-    else window.open(shareLink, '_blank');
-  } catch (e) { window.open(shareLink, '_blank'); }
-}
-
-// ============================================================
 // === 14. GAME LIFECYCLE
 // ============================================================
 
@@ -4063,7 +3521,6 @@ async function loadFlags() {
     const r = await fetch('/api/flags');
     const d = await r.json();
     state.iapEnabled = !!d.iap;
-    if (d.bot_username) state.botUsername = d.bot_username;
     if (d.mixpanel_token) initMixpanel(d.mixpanel_token);
   } catch (e) {}
 }
