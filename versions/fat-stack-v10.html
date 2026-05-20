@@ -708,147 +708,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 .t-prize-card .icon { font-size: 80px; margin: 8px 0; animation: celebrateBounce 600ms cubic-bezier(.18,1.2,.4,1) both; }
 .t-prize-card .rank { font-size: 18px; font-weight: 900; color: var(--text-soft); }
 .t-prize-card .amount { font-size: 40px; font-weight: 900; color: var(--accent-dark); margin: 4px 0; }
-
-/* XP bar — sits below the HUD score/best/streak row */
-.xp-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 2px 14px 6px;
-}
-.xp-level-pill {
-  background: linear-gradient(135deg, #9D4EDD, #5A189A);
-  color: white; border-radius: 999px;
-  padding: 3px 10px; font-weight: 900; font-size: 12px;
-  box-shadow: 0 2px 0 #3C0F73;
-  flex-shrink: 0; cursor: pointer;
-  transition: transform 80ms;
-}
-.xp-level-pill:active { transform: translateY(2px); }
-.xp-bar-track {
-  flex: 1; height: 12px;
-  background: var(--board-bg);
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: inset 0 1px 0 var(--shadow);
-}
-.xp-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #9D4EDD, #FFB100);
-  width: 0%;
-  transition: width 500ms cubic-bezier(.18,1,.27,1);
-  border-radius: 6px;
-}
-.xp-ratio {
-  font-size: 10px; font-weight: 800; color: var(--text-soft);
-  font-variant-numeric: tabular-nums; min-width: 60px; text-align: right;
-}
-
-/* Power Hour banner — pulses gold above the inventory pills when active */
-.power-hour-banner {
-  display: none;
-  background: linear-gradient(135deg, #FFB100, #FF6B35);
-  margin: 0 12px 6px;
-  border-radius: 12px;
-  padding: 8px 12px;
-  color: var(--text);
-  font-weight: 900; font-size: 13px;
-  text-align: center;
-  box-shadow: 0 3px 0 #C04A1F;
-  animation: pulse 1500ms ease-in-out infinite;
-}
-.power-hour-banner.show { display: block; }
-
-/* Welcome Week banner — soft green in Earn tab */
-.welcome-week-banner {
-  background: linear-gradient(135deg, #06D6A0, #04A37A);
-  color: white; border-radius: 14px;
-  padding: 10px 14px;
-  font-weight: 800; font-size: 13px;
-  text-align: center;
-  margin-bottom: 12px;
-  box-shadow: 0 3px 0 #036B52;
-}
-
-/* Profile modal */
-.profile-hero {
-  display: flex; flex-direction: column; align-items: center;
-  margin-bottom: 12px;
-}
-.profile-avatar {
-  width: 80px; height: 80px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--gold));
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36px; font-weight: 900;
-  box-shadow: 0 4px 12px var(--shadow);
-  margin-bottom: 8px;
-  overflow: hidden;
-}
-.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.profile-name { font-size: 20px; font-weight: 900; color: var(--text); }
-.profile-level-row {
-  display: flex; align-items: center; gap: 10px;
-  margin: 12px 0;
-}
-.profile-level-row .xp-bar-track { height: 16px; }
-.profile-stats-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;
-  margin-top: 8px;
-}
-.profile-stats-grid .stat {
-  background: var(--board-bg);
-  border-radius: 10px;
-  padding: 8px 12px;
-}
-.profile-stats-grid .stat .lbl {
-  font-size: 10px; font-weight: 700; color: var(--text-soft);
-  text-transform: uppercase; letter-spacing: 0.4px;
-}
-.profile-stats-grid .stat .val {
-  font-size: 18px; font-weight: 900; color: var(--text);
-  margin-top: 1px; font-variant-numeric: tabular-nums;
-}
-
-/* Level-up modal */
-.lvl-up-card {
-  text-align: center; padding: 4px 0 0;
-}
-.lvl-up-card .crown {
-  font-size: 72px; line-height: 1;
-  animation: celebrateBounce 600ms cubic-bezier(.18,1.2,.4,1) both;
-  margin: 4px 0;
-}
-.lvl-up-card .level {
-  font-size: 64px; font-weight: 900;
-  background: linear-gradient(135deg, #FFB100, #9D4EDD);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  line-height: 1; margin: 4px 0;
-}
-.lvl-up-card .label {
-  font-size: 16px; font-weight: 800; color: var(--text-soft);
-  margin-bottom: 8px;
-}
-.lvl-up-card .reward {
-  font-size: 22px; font-weight: 900; color: var(--accent-dark);
-}
-
-/* Patch notes modal */
-.patch-list {
-  text-align: left; padding: 0; margin: 8px 0 16px;
-}
-.patch-list li {
-  list-style: none;
-  background: var(--board-bg);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-bottom: 6px;
-  font-size: 13px; font-weight: 600; color: var(--text);
-  line-height: 1.35;
-}
-.patch-list li::before {
-  content: '✨';
-  margin-right: 6px;
-}
 </style>
 </head>
 <body>
@@ -871,17 +730,10 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
         </div>
       </div>
       <div class="icon-btns">
-        <div class="btn-icon" id="btn-profile" title="Profile">👤</div>
         <div class="btn-icon" id="btn-leaderboard" title="Leaderboard">🏆</div>
         <div class="btn-icon" id="btn-settings" title="Settings">⚙</div>
       </div>
     </div>
-    <div class="xp-row">
-      <div class="xp-level-pill" id="xp-level" data-action="open-profile">Lv 1</div>
-      <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-bar-fill"></div></div>
-      <div class="xp-ratio" id="xp-ratio">0 / 100</div>
-    </div>
-    <div class="power-hour-banner" id="power-hour-banner">⚡ <span id="ph-text">POWER HOUR — 2× rewards!</span></div>
     <div class="inv-row" id="inv-row"></div>
     <canvas id="mascot-canvas" width="128" height="128"></canvas>
     <div id="game-canvas-wrap">
@@ -1106,44 +958,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
   </div>
 </div>
 
-<div class="modal-bg" id="modal-profile">
-  <div class="modal" style="max-width:420px;">
-    <div class="profile-hero">
-      <div class="profile-avatar" id="profile-avatar">🟧</div>
-      <div class="profile-name" id="profile-name">Player</div>
-    </div>
-    <div class="profile-level-row">
-      <div class="xp-level-pill" id="profile-level">Lv 1</div>
-      <div class="xp-bar-track"><div class="xp-bar-fill" id="profile-xp-fill"></div></div>
-      <div class="xp-ratio" id="profile-xp-ratio">0 / 100</div>
-    </div>
-    <h2 style="font-size:14px; margin:14px 0 8px; text-align:center;" data-i18n="profileStats">Lifetime Stats</h2>
-    <div class="profile-stats-grid" id="profile-stats"></div>
-    <button class="btn secondary" data-action="close-modal" data-i18n="close" style="margin-top:14px;">Close</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-level-up">
-  <div class="modal">
-    <div class="lvl-up-card">
-      <div class="crown">👑</div>
-      <div class="label" data-i18n="levelUp">LEVEL UP</div>
-      <div class="level" id="lvl-up-num">2</div>
-      <div class="reward" id="lvl-up-reward">+50 💎</div>
-    </div>
-    <button class="btn" data-action="close-modal" data-i18n="awesome" style="margin-top:18px;">Awesome!</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-patch-notes">
-  <div class="modal" style="max-width:420px;">
-    <h2 data-i18n="whatsNew">What's New</h2>
-    <p class="sub" id="patch-version">v0.3.0</p>
-    <ul class="patch-list" id="patch-list"></ul>
-    <button class="btn" data-action="close-modal" data-i18n="gotIt">Got it!</button>
-  </div>
-</div>
-
 <div class="modal-bg" id="modal-confirm-reset">
   <div class="modal">
     <h2 data-i18n="resetTitle">Reset progress?</h2>
@@ -1160,27 +974,7 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 // === 1. CONSTANTS & STATE
 // ============================================================
 
-const VERSION = 'v0.3.0';
-
-// XP curve — XP needed to *reach* level N is xpForLevel(N). Power curve
-// chosen so leveling stays steady: lvl 5 ~850 XP, lvl 25 ~12k, lvl 50 ~35k,
-// lvl 100 ~100k. A dedicated player tops out around lvl 50-100.
-function xpForLevel(n) {
-  if (n <= 1) return 0;
-  return Math.floor(100 * Math.pow(n - 1, 1.5));
-}
-function levelFromXP(xp) {
-  // Binary search up — at the rates we use, level <= 200 always.
-  let lvl = 1;
-  while (xpForLevel(lvl + 1) <= xp && lvl < 200) lvl++;
-  return lvl;
-}
-function xpProgressInLevel(xp) {
-  const lvl = levelFromXP(xp);
-  const inLvl = xp - xpForLevel(lvl);
-  const span = xpForLevel(lvl + 1) - xpForLevel(lvl);
-  return { lvl, inLvl, span, pct: Math.min(1, span > 0 ? inLvl / span : 0) };
-}
+const VERSION = 'v0.2.0';
 const GRID = 8;
 const TRAY = 3;
 
@@ -1368,13 +1162,6 @@ const state = {
   shieldDays: 0,
   // Tournament — last seen state so we know when prizes arrive.
   lastSeenTournamentId: '',
-  // XP / Levels — cumulative XP across all runs.
-  xp: 0,
-  highestLevelSeen: 1,           // for level-up celebrations (didn't show before)
-  // Welcome Week — 2× rewards for first 7 days from initial app open.
-  firstSeenAt: 0,                // timestamp ms, set on first save() ever
-  // Patch notes — last VERSION the player saw the "What's New" modal for.
-  lastPatchNotesSeen: '',
   settings: {
     sound: true,
     haptics: true,
@@ -1399,9 +1186,6 @@ const state = {
   // Shop loader + celebration
   buying: null,                  // { skuId } — drives shop loader spinner
   pendingCelebration: null,      // { sku, grant } — queued post-purchase modal
-  // Power Hour (server-driven, fixed daily window). Refreshed via /api/flags
-  // and /api/heartbeat; { active, ends_at, starts_at, multiplier } when on.
-  powerHour: null,
   welcomed: false,
   mascotBounce: 0,
   shake: 0,
@@ -1646,21 +1430,6 @@ const STRINGS = {
     achFirstTop100: 'Top 100',
     achFirstSpin: 'Spinner',
     achFirstShare: 'Word of Mouth',
-    // v0.3
-    powerHourActive: 'POWER HOUR — 2× rewards · {mins}m left',
-    welcomeWeekBanner: 'Welcome Week — 2× rewards for {days} more day(s)',
-    levelUp: 'LEVEL UP',
-    profileStats: 'Lifetime Stats',
-    whatsNew: "What's New",
-    gotIt: 'Got it!',
-    stat_best: 'Best Score',
-    stat_streak: 'Streak',
-    stat_totalGames: 'Games Played',
-    stat_totalLines: 'Lines Cleared',
-    stat_maxComboEver: 'Best Combo',
-    stat_gemsTotal: 'Gems',
-    stat_achs: 'Achievements',
-    stat_rankBest: 'Best Rank',
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -1796,21 +1565,6 @@ const STRINGS = {
     achFirstTop100: 'Топ 100',
     achFirstSpin: 'Спиннер',
     achFirstShare: 'Сарафанное радио',
-    // v0.3
-    powerHourActive: 'ЧАС СИЛЫ — награды × 2 · осталось {mins}мин',
-    welcomeWeekBanner: 'Неделя новичка — 2× награды ещё {days} дн.',
-    levelUp: 'НОВЫЙ УРОВЕНЬ',
-    profileStats: 'Статистика',
-    whatsNew: 'Что нового',
-    gotIt: 'Понятно!',
-    stat_best: 'Лучший счёт',
-    stat_streak: 'Серия',
-    stat_totalGames: 'Сыграно',
-    stat_totalLines: 'Линий',
-    stat_maxComboEver: 'Макс. комбо',
-    stat_gemsTotal: 'Гемы',
-    stat_achs: 'Достижений',
-    stat_rankBest: 'Лучший ранг',
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -3093,8 +2847,6 @@ function placePieceAt(slot, gx, gy, slotIdx) {
     const lineScore = 10 * totalLines;
     const comboBonus = totalLines >= 2 ? (totalLines * totalLines * 5) : 0;
     scoreDelta += lineScore + comboBonus;
-    // XP from clears — 5 per line + 20 bonus on 2+ line combo.
-    awardXP(5 * totalLines + (totalLines >= 2 ? 20 : 0), 'line_clear');
     state.combo += 1;
     state.comboTimer = 1500;
     state.linesClearedThisGame = (state.linesClearedThisGame || 0) + totalLines;
@@ -3466,18 +3218,16 @@ function chestClaimableToday() {
 function claimChest() {
   if (!chestClaimableToday()) return;
   const day = chestDayForToday();
-  const baseReward = CHEST_REWARDS[day - 1];
-  const reward = applyMultiplier(baseReward);
+  const reward = CHEST_REWARDS[day - 1];
   state.gems += reward;
   state.chestDay = day;
   state.chestClaimedYMD = ymd();
   toast(t('claimed', { n: reward }));
   TG.haptic('success');
   sfx('star');
-  awardXP(20, 'chest_claim');
   save();
   renderEarn();
-  track('chest_claim', { day, reward, multiplier: rewardMultiplier() });
+  track('chest_claim', { day, reward });
 }
 
 function missionState(id) {
@@ -3554,16 +3304,14 @@ function missionAction(id, kind) {
 }
 
 function grantMissionReward(m) {
-  const reward = applyMultiplier(m.reward);
-  state.gems += reward;
+  state.gems += m.reward;
   setMissionClaimed(m);
-  toast(t('claimed', { n: reward }));
+  toast(t('claimed', { n: m.reward }));
   TG.haptic('success');
   sfx('star');
-  awardXP(30, 'mission_complete');
   save();
   renderEarn();
-  track('mission_complete', { mission_id: m.id, reward, mission_type: m.type, multiplier: rewardMultiplier() });
+  track('mission_complete', { mission_id: m.id, reward: m.reward, mission_type: m.type });
 }
 
 // ============================================================
@@ -3683,11 +3431,7 @@ function spinWheel() {
 function finishSpin(idx) {
   const seg = SPIN_SEGMENTS[idx];
   // Apply reward via the same applyGrant pipe so HUD pills + skin equip work.
-  // Multiplier ONLY applies to gem rewards (not to items like revives/hints).
-  const mult = rewardMultiplier();
-  const reward = Object.assign({}, seg.reward);
-  if (reward.gems) reward.gems = Math.floor(reward.gems * mult);
-  applyGrant(reward);
+  applyGrant(seg.reward);
   state.spinClaimedYMD = ymd();
   state.lastSpinResult = { segId: seg.id, label: seg.label };
   updateInventoryPills();
@@ -3695,7 +3439,6 @@ function finishSpin(idx) {
   save();
   sfx('star');
   TG.haptic('success');
-  awardXP(15, 'spin_complete');
   // Result modal.
   document.getElementById('spin-result-icon').textContent =
     seg.id.startsWith('gems')   ? '💎' :
@@ -3732,28 +3475,6 @@ function renderEarn() {
   updateSpinUI();
   // Achievements banner counter ("12 / 33 unlocked").
   updateAchBannerSub();
-  // Welcome Week banner — insert at top of view if active.
-  const view = document.getElementById('view-earn');
-  if (view) {
-    const existing = view.querySelector('.welcome-week-banner');
-    if (isWelcomeWeek()) {
-      if (!existing) {
-        const b = document.createElement('div');
-        b.className = 'welcome-week-banner';
-        const remMs = (state.firstSeenAt + 7 * 24 * 60 * 60 * 1000) - Date.now();
-        const days = Math.ceil(remMs / (24 * 60 * 60 * 1000));
-        b.textContent = '🎁 ' + t('welcomeWeekBanner', { days });
-        const firstChild = view.children[1];   // after the h2/gem-pill row
-        view.insertBefore(b, firstChild);
-      } else {
-        const remMs = (state.firstSeenAt + 7 * 24 * 60 * 60 * 1000) - Date.now();
-        const days = Math.ceil(remMs / (24 * 60 * 60 * 1000));
-        existing.textContent = '🎁 ' + t('welcomeWeekBanner', { days });
-      }
-    } else if (existing) {
-      existing.remove();
-    }
-  }
   // Chest grid
   const day = chestDayForToday();
   const grid = document.getElementById('chest-days');
@@ -3813,12 +3534,7 @@ document.addEventListener('click', (e) => {
     return;
   }
   const action = a.getAttribute('data-action');
-  if (action === 'close-modal') {
-    closeAllModals();
-    // Advance the level-up queue if more are waiting.
-    if (__lvlQueue.length > 0) setTimeout(showNextLevelUp, 200);
-    else __lvlShowing = false;
-  }
+  if (action === 'close-modal') { closeAllModals(); }
   else if (action === 'welcome-start') {
     state.welcomed = true; save();
     closeAllModals();
@@ -3846,7 +3562,6 @@ document.addEventListener('click', (e) => {
   else if (action === 'reset-confirm') { resetProgress(); }
   else if (action === 'lb-from-daily') { closeAllModals(); openLeaderboard('daily'); }
   else if (action === 'open-achievements') { renderAchievementsModal(); openModal('modal-achievements'); }
-  else if (action === 'open-profile') { openProfile(); }
   else if (action === 'ach-unlock-next') {
     closeAllModals();
     if (__achQueue.length > 0) setTimeout(showNextAchievement, 200);
@@ -3860,7 +3575,6 @@ for (const btn of document.querySelectorAll('.tab-btn')) {
 }
 document.getElementById('btn-settings').addEventListener('click', () => { openModal('modal-settings'); });
 document.getElementById('btn-leaderboard').addEventListener('click', () => { openLeaderboard(state.dailyMode ? 'daily' : 'regular'); });
-document.getElementById('btn-profile').addEventListener('click', openProfile);
 
 // Leaderboard tab click handlers (delegated since they're in the modal)
 for (const b of document.querySelectorAll('.lb-tab')) {
@@ -4244,10 +3958,6 @@ function save() {
       achievements: state.achievements,
       shieldDays: state.shieldDays,
       lastSeenTournamentId: state.lastSeenTournamentId,
-      xp: state.xp,
-      highestLevelSeen: state.highestLevelSeen,
-      firstSeenAt: state.firstSeenAt,
-      lastPatchNotesSeen: state.lastPatchNotesSeen,
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
   } catch (e) {}
@@ -4291,10 +4001,6 @@ function load() {
     if (s.achievements && typeof s.achievements === 'object') state.achievements = s.achievements;
     if (typeof s.shieldDays === 'number') state.shieldDays = s.shieldDays;
     if (s.lastSeenTournamentId) state.lastSeenTournamentId = s.lastSeenTournamentId;
-    if (typeof s.xp === 'number') state.xp = s.xp;
-    if (typeof s.highestLevelSeen === 'number') state.highestLevelSeen = s.highestLevelSeen;
-    if (typeof s.firstSeenAt === 'number') state.firstSeenAt = s.firstSeenAt;
-    if (s.lastPatchNotesSeen) state.lastPatchNotesSeen = s.lastPatchNotesSeen;
     // Daily best — reset if it's from a previous day.
     if (s.dailyYMD === ymd() && typeof s.dailyBestToday === 'number') {
       state.dailyBestToday = s.dailyBestToday;
@@ -4525,109 +4231,6 @@ function updateAchBannerSub() {
   el.textContent = unlocked + ' / ' + ACHIEVEMENTS.length + ' ' + t('unlocked');
 }
 
-// ============================================================
-// === PROFILE
-// ============================================================
-
-function openProfile() {
-  // Avatar: prefer TG photo_url, fall back to first initial or pumpkin.
-  const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  const avatar = document.getElementById('profile-avatar');
-  if (u && u.photo_url) {
-    avatar.innerHTML = '<img src="' + escapeHtml(u.photo_url) + '" alt="">';
-  } else {
-    avatar.textContent = (u && u.first_name) ? u.first_name.charAt(0).toUpperCase() : '🟧';
-  }
-  document.getElementById('profile-name').textContent = (u && (u.first_name || u.username)) || 'Player';
-  // Level + XP bar duplicate of HUD (bigger, more readable here).
-  const p = xpProgressInLevel(state.xp || 0);
-  document.getElementById('profile-level').textContent = 'Lv ' + p.lvl;
-  document.getElementById('profile-xp-fill').style.width = (p.pct * 100).toFixed(1) + '%';
-  document.getElementById('profile-xp-ratio').textContent = p.inLvl + ' / ' + p.span;
-  // Stats grid — pulls from lifetime counters.
-  const stats = [
-    { k: 'best',          v: formatNum(state.best || 0) },
-    { k: 'streak',        v: state.streak || 0 },
-    { k: 'totalGames',    v: formatNum(state.totalGamesEver || 0) },
-    { k: 'totalLines',    v: formatNum(state.totalLinesEver || 0) },
-    { k: 'maxComboEver',  v: (state.bestComboEver || 0) + '×' },
-    { k: 'gemsTotal',     v: formatNum(state.gems || 0) },
-    { k: 'achs',          v: ACHIEVEMENTS.filter(a => isAchievementUnlocked(a.id)).length + ' / ' + ACHIEVEMENTS.length },
-    { k: 'rankBest',      v: state.bestLeaderboardRankEver ? '#' + state.bestLeaderboardRankEver : '—' },
-  ];
-  const wrap = document.getElementById('profile-stats');
-  wrap.innerHTML = stats.map(s =>
-    '<div class="stat"><div class="lbl">' + t('stat_' + s.k) + '</div><div class="val">' + s.v + '</div></div>'
-  ).join('');
-  openModal('modal-profile');
-}
-
-// ============================================================
-// === POWER HOUR — server-driven, daily fixed window
-// ============================================================
-
-async function refreshPowerHour() {
-  try {
-    const r = await fetch('/api/power-hour');
-    const d = await r.json();
-    state.powerHour = d || null;
-  } catch (e) { state.powerHour = null; }
-  updatePowerHourBanner();
-}
-function updatePowerHourBanner() {
-  const el = document.getElementById('power-hour-banner');
-  if (!el) return;
-  const txt = document.getElementById('ph-text');
-  if (isPowerHour()) {
-    const rem = Math.max(0, (state.powerHour.ends_at || 0) - Date.now());
-    const mins = Math.ceil(rem / 60000);
-    if (txt) txt.textContent = t('powerHourActive', { mins });
-    el.classList.add('show');
-  } else {
-    el.classList.remove('show');
-  }
-}
-// Re-poll every minute so we catch the start of Power Hour without a reload.
-setInterval(() => { refreshPowerHour(); }, 60 * 1000);
-
-// ============================================================
-// === PATCH NOTES — auto-show on first launch after version change
-// ============================================================
-
-const PATCH_NOTES = {
-  'v0.3.0': [
-    'XP and Levels — every game pushes you up the ladder',
-    'Power Hour — 2× rewards in a daily window. Watch for the gold banner.',
-    'Welcome Week — first 7 days get 2× all rewards',
-    'Player Profile — tap your avatar to see lifetime stats',
-    'What\'s New — this screen, on every major update',
-  ],
-};
-const PATCH_NOTES_RU = {
-  'v0.3.0': [
-    'Опыт и Уровни — каждая игра поднимает тебя выше',
-    'Час Силы — 2× награды в ежедневном окне. Жди золотой баннер.',
-    'Неделя Новичка — первые 7 дней все награды × 2',
-    'Профиль игрока — нажми на аватар, чтобы увидеть статистику',
-    'Что нового — это окно, при каждом крупном обновлении',
-  ],
-};
-function maybeShowPatchNotes() {
-  if (state.lastPatchNotesSeen === VERSION) return;
-  const notes = (state.settings.lang === 'ru' ? PATCH_NOTES_RU : PATCH_NOTES)[VERSION];
-  if (!notes) {
-    state.lastPatchNotesSeen = VERSION;
-    save();
-    return;
-  }
-  document.getElementById('patch-version').textContent = VERSION;
-  document.getElementById('patch-list').innerHTML = notes.map(n => '<li>' + escapeHtml(n) + '</li>').join('');
-  openModal('modal-patch-notes');
-  state.lastPatchNotesSeen = VERSION;
-  save();
-  track('patch_notes_shown', { version: VERSION });
-}
-
 function renderLeaderboardList(top) {
   const list = document.getElementById('lb-list');
   if (!top || top.length === 0) {
@@ -4666,79 +4269,6 @@ function escapeHtml(s) {
 }
 
 // ============================================================
-// === REWARD MULTIPLIERS — Welcome Week + Power Hour stack
-// ============================================================
-
-function isWelcomeWeek() {
-  if (!state.firstSeenAt) return false;
-  return (Date.now() - state.firstSeenAt) < 7 * 24 * 60 * 60 * 1000;
-}
-function isPowerHour() {
-  return !!(state.powerHour && state.powerHour.active && Date.now() < (state.powerHour.ends_at || 0));
-}
-// Stack: Welcome Week × Power Hour. Both at 2× → 4× total.
-function rewardMultiplier() {
-  let m = 1;
-  if (isWelcomeWeek()) m *= 2;
-  if (isPowerHour())   m *= 2;
-  return m;
-}
-function applyMultiplier(amount) {
-  return Math.floor(amount * rewardMultiplier());
-}
-
-// ============================================================
-// === XP / LEVELS
-// ============================================================
-
-function awardXP(amount, reason) {
-  if (!amount || amount <= 0) return;
-  const oldLvl = levelFromXP(state.xp || 0);
-  state.xp = (state.xp || 0) + amount;
-  const newLvl = levelFromXP(state.xp);
-  track('xp_awarded', { amount, reason, total_xp: state.xp, level: newLvl });
-  if (newLvl > oldLvl) {
-    // Level up! Award a gem bonus + queue celebration.
-    const reward = newLvl * 25;
-    state.gems += reward;
-    state.highestLevelSeen = newLvl;
-    save();
-    queueLevelUpModal(newLvl, reward);
-    track('level_up', { from: oldLvl, to: newLvl, reward });
-  }
-  updateXpBar();
-}
-function updateXpBar() {
-  const bar = document.getElementById('xp-bar-fill');
-  const lvlEl = document.getElementById('xp-level');
-  const ratioEl = document.getElementById('xp-ratio');
-  if (!bar || !lvlEl) return;
-  const p = xpProgressInLevel(state.xp || 0);
-  bar.style.width = (p.pct * 100).toFixed(1) + '%';
-  lvlEl.textContent = 'Lv ' + p.lvl;
-  if (ratioEl) ratioEl.textContent = p.inLvl + ' / ' + p.span;
-}
-
-// Level-up modal queue (multiple levels can be crossed in one game-over).
-const __lvlQueue = [];
-let __lvlShowing = false;
-function queueLevelUpModal(lvl, reward) {
-  __lvlQueue.push({ lvl, reward });
-  if (!__lvlShowing) showNextLevelUp();
-}
-function showNextLevelUp() {
-  const item = __lvlQueue.shift();
-  if (!item) { __lvlShowing = false; return; }
-  __lvlShowing = true;
-  document.getElementById('lvl-up-num').textContent = item.lvl;
-  document.getElementById('lvl-up-reward').textContent = '+' + formatNum(item.reward) + ' 💎';
-  openModal('modal-level-up');
-  TG.haptic('success');
-  sfx('combo');
-  fireConfetti(80);
-}
-
-// ============================================================
 // === ACHIEVEMENTS — runs after every state change, unlocks + gems
 // ============================================================
 
@@ -4760,7 +4290,6 @@ function checkAchievements() {
         state.achievements[a.id] = { unlocked: true, ts: Date.now() };
         state.gems += a.reward;
         track('achievement_unlocked', { ach_id: a.id, reward: a.reward });
-        awardXP(100, 'achievement');
         __achQueue.push(a);
       }
     } catch (e) {}
@@ -4942,8 +4471,6 @@ function onGameOver() {
   rolloverDailyCountersIfNeeded();
   state.gamesPlayedToday += 1;
   state.totalGamesEver = (state.totalGamesEver || 0) + 1;
-  // XP from the game's final score — 1 XP per 20 points (50 XP per 1000).
-  awardXP(Math.floor(state.score / 20), 'game_over');
   const duration = state.gameStartedAt ? Math.round((Date.now() - state.gameStartedAt) / 1000) : 0;
   const wasDaily = !!state.dailyMode;
   const dailyYMDAtGameOver = state.dailyYMD;
@@ -5118,20 +4645,10 @@ function boot() {
   loadAdminStatus();
   heartbeat();
   pollPendingPrizes();
-  refreshPowerHour();
   // Initial achievement scan covers state restored from previous session
   // that may now satisfy a check (e.g., player owned a skin from a past
   // purchase but the achievement was added in this release).
   checkAchievements();
-  // First-ever-launch timestamp — drives Welcome Week.
-  if (!state.firstSeenAt) {
-    state.firstSeenAt = Date.now();
-    save();
-    track('first_seen', {});
-  }
-  // Paint XP bar + show patch notes if version changed.
-  updateXpBar();
-  setTimeout(maybeShowPatchNotes, 800);   // delay so it doesn't fight the welcome modal
   setInterval(heartbeat, 60 * 1000);
   if (!state.welcomed) openModal('modal-welcome');
   // Chest-ready nudge — fires once per session if today's chest is unclaimed.

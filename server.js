@@ -541,6 +541,37 @@ app.post('/api/heartbeat', (req, res) => {
   res.json({ ok: true });
 });
 
+// ============ Power Hour ============
+// Fixed daily window 18:00-19:00 UTC — peak EU/RU evening. Every player
+// gets the same window. Bot notification fires ~30 min before to bring
+// people back. During the hour, gem rewards on the client are doubled
+// (the client applies the multiplier when applying rewards).
+const POWER_HOUR_START_UTC_HOUR = 18;   // 18:00 UTC
+const POWER_HOUR_DURATION_MS = 60 * 60 * 1000;
+
+function powerHourWindow(now) {
+  now = now || Date.now();
+  const d = new Date(now);
+  const todayStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(),
+    POWER_HOUR_START_UTC_HOUR, 0, 0, 0)).getTime();
+  const todayEnd = todayStart + POWER_HOUR_DURATION_MS;
+  if (now < todayStart) {
+    // Power Hour later today.
+    return { starts_at: todayStart, ends_at: todayEnd, active: false };
+  }
+  if (now < todayEnd) {
+    return { starts_at: todayStart, ends_at: todayEnd, active: true };
+  }
+  // Today's window has ended — return tomorrow's.
+  const tomorrowStart = todayStart + 24 * 60 * 60 * 1000;
+  return { starts_at: tomorrowStart, ends_at: tomorrowStart + POWER_HOUR_DURATION_MS, active: false };
+}
+
+app.get('/api/power-hour', (req, res) => {
+  const w = powerHourWindow();
+  res.json(Object.assign({ multiplier: w.active ? 2 : 1 }, w));
+});
+
 // Daily challenge — every player on the same UTC day gets the same seed,
 // which the client feeds into a Mulberry32 PRNG so the piece queue +
 // any other gameplay random is deterministic. Daily scores are submitted
@@ -799,7 +830,7 @@ async function sendWelcome(chatId, firstName, lang) {
 //   https://<your-deploy>/api/diag
 app.get('/api/diag', async (req, res) => {
   const out = {
-    version: 'v0.2.0',
+    version: 'v0.3.0',
     bot_token_configured: !!BOT_TOKEN,
     bot_username: BOT_USERNAME || null,
     public_url: getPublicUrl() || null,
@@ -953,6 +984,16 @@ const NOTIF_COPY = {
       '👋 We miss you! Free gems waiting inside.',
     ],
   },
+  power_hour: {
+    ru: [
+      '⚡ Час Силы через 30 минут! Все награды × 2 — не пропусти.',
+      '⚡ Готовься — Час Силы скоро. Удвоенные гемы и опыт.',
+    ],
+    en: [
+      '⚡ Power Hour in 30 minutes! All rewards 2× — don\'t miss it.',
+      '⚡ Gear up — Power Hour starts soon. Double gems + XP.',
+    ],
+  },
 };
 const NOTIF_CTA = {
   ru: '🎮  И Г Р А Т Ь',
@@ -1027,6 +1068,27 @@ function recordNotifSent(st, kind, now) {
 
 async function notifyLoop() {
   const now = Date.now();
+  // Power Hour pre-roll — fire ONCE per day, in the 30-min window before
+  // Power Hour opens (17:30-17:55 UTC). Goes to every known user who isn't
+  // currently active. Bypasses the per-kind 24h cooldown via a separate
+  // notifLastPowerHourYMD check so we still get one ping per day per user.
+  const ph = powerHourWindow(now);
+  const minsToPh = (ph.starts_at - now) / 60000;
+  if (minsToPh > 5 && minsToPh < 30) {
+    const todayYMD = new Date(now).toISOString().slice(0, 10);
+    for (const [uid, st] of userState) {
+      if (!st.chatId) continue;
+      if (st.notifLastPowerHourYMD === todayYMD) continue;
+      // Don't ping users who are CURRENTLY in the app — they'll see it natively.
+      if ((now - (st.lastActiveAt || 0)) < 5 * 60 * 1000) continue;
+      const ok = await sendNotification(st.chatId, st.lang || 'en', 'power_hour');
+      if (ok) {
+        st.notifLastPowerHourYMD = todayYMD;
+        // Power Hour ping doesn't count toward the daily cap — it's a scheduled
+        // event ping, not a re-engagement ping.
+      }
+    }
+  }
   for (const [uid, st] of userState) {
     if (!st.chatId) continue;
     // Streak at risk: player has a streak and the deadline is in the next 4h
