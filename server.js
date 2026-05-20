@@ -145,20 +145,29 @@ function seedLeaderboardIfEmpty() {
     const base = NAMES[i % NAMES.length];
     return i >= NAMES.length ? (base + ' ' + (i + 1)) : base;
   }
-  // All-Time leaderboard.
-  if (leaderboard.regular.length === 0) {
-    const entries = [];
-    for (let i = 0; i < 80; i++) {
-      entries.push({
-        uid: -(1000 + i),
+  // All-Time leaderboard. Top up to 80 entries even if some real ones exist
+  // (the original "only if empty" check left a 1-entry leaderboard looking
+  // dead while today's daily was full of seed entries).
+  const TARGET_REGULAR = 80;
+  if (leaderboard.regular.length < TARGET_REGULAR) {
+    const existingUids = new Set(leaderboard.regular.map(e => e.uid));
+    const entries = leaderboard.regular.slice();
+    const added = [];
+    for (let i = 0; entries.length < TARGET_REGULAR && i < 200; i++) {
+      const uid = -(1000 + i);
+      if (existingUids.has(uid)) continue;
+      const seed = {
+        uid,
         name: randomName(i),
         score: bellScore(i),
         ts: Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000),
-      });
+      };
+      entries.push(seed);
+      added.push(seed);
     }
     entries.sort((a, b) => b.score - a.score);
     leaderboard.regular = entries.slice(0, 100);
-    console.log('[leaderboard] seeded ' + entries.length + ' regular entries');
+    console.log('[leaderboard] topped up regular with ' + added.length + ' seed entries (now ' + leaderboard.regular.length + ')');
   }
   // Today's daily leaderboard.
   const today = ymdUTC();
@@ -181,30 +190,37 @@ function seedLeaderboardIfEmpty() {
 }
 function seedTournamentIfEmpty() {
   if (!tournament || tournament.closed) return;
-  if (tournament.entries.length > 0) return;
+  const TARGET_T = 25;
+  if (tournament.entries.length >= TARGET_T) return;
   const NAMES = [
     'Vladimir', 'Anna', 'Pavel', 'Elena', 'Sergey', 'Olga', 'Maria',
     'Dmitry', 'Tatiana', 'Andrei', 'Nikita', 'Kate', 'David', 'Sarah',
     'Emma', '🔥 Kuznya', '⚡ Volk', '💎 Zara', '🟧 Stacker', 'TileWiz',
     'GridLord', 'Cuboid', 'BlockKing', 'StackQueen', 'NeoMax',
   ];
-  const entries = [];
-  for (let i = 0; i < 25; i++) {
+  const existingUids = new Set(tournament.entries.map(e => e.uid));
+  const entries = tournament.entries.slice();
+  const added = [];
+  for (let i = 0; entries.length < TARGET_T && i < 200; i++) {
+    const uid = -(3000 + i);
+    if (existingUids.has(uid)) continue;
     let score;
     if (i < 3) score = 38000 + Math.floor(Math.random() * 12000);
     else if (i < 10) score = 18000 + Math.floor(Math.random() * 14000);
     else score = 5000 + Math.floor(Math.random() * 8000);
-    entries.push({
-      uid: -(3000 + i),
+    const seed = {
+      uid,
       name: NAMES[i % NAMES.length] + (i >= NAMES.length ? (' ' + (i + 1)) : ''),
       score,
       ts: Date.now() - Math.floor(Math.random() * 36 * 60 * 60 * 1000),
-    });
+    };
+    entries.push(seed);
+    added.push(seed);
   }
   entries.sort((a, b) => b.score - a.score);
   tournament.entries = entries.slice(0, 500);
   saveTournament(tournament);
-  console.log('[tournament] seeded ' + entries.length + ' entries');
+  console.log('[tournament] topped up with ' + added.length + ' seed entries (now ' + tournament.entries.length + ')');
 }
 seedLeaderboardIfEmpty();
 // seedTournamentIfEmpty() is called after ensureTournament() — the tournament
