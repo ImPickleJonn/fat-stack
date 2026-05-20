@@ -134,6 +134,11 @@ body {
 .btn-icon:active { transform: translateY(2px); }
 .btn-icon.shop { background: linear-gradient(135deg, var(--gold), var(--accent)); color: var(--text); }
 
+#mascot-canvas {
+  position: absolute; top: calc(var(--tg-safe-top) + 60px); right: 10px;
+  width: 64px; height: 64px; pointer-events: none; z-index: 5;
+}
+
 #game-canvas-wrap {
   flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
   position: relative; padding: 0 4px; min-height: 0;
@@ -878,6 +883,7 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
     </div>
     <div class="power-hour-banner" id="power-hour-banner">⚡ <span id="ph-text">POWER HOUR — 2× rewards!</span></div>
     <div class="inv-row" id="inv-row"></div>
+    <canvas id="mascot-canvas" width="128" height="128"></canvas>
     <div id="game-canvas-wrap">
       <canvas id="game-canvas"></canvas>
     </div>
@@ -1397,6 +1403,7 @@ const state = {
   // and /api/heartbeat; { active, ends_at, starts_at, multiplier } when on.
   powerHour: null,
   welcomed: false,
+  mascotBounce: 0,
   shake: 0,
   hintActive: null,              // { slotIdx, gx, gy, cells } — set by useHint
   hintExpiresAt: 0,
@@ -3102,9 +3109,11 @@ function placePieceAt(slot, gx, gy, slotIdx) {
     state.shake = Math.min(14, 5 + totalLines * 2 + state.combo);
     sfx(totalLines >= 2 || state.combo >= 2 ? 'combo' : 'clear');
     TG.haptic(totalLines >= 2 ? 'heavy' : 'medium');
+    bounceMascot(1.0 + Math.min(0.8, totalLines * 0.2 + state.combo * 0.1));
   } else {
     // No clear breaks combo
     if (state.combo > 0) state.combo = 0;
+    bounceMascot(0.4);
   }
   state.score += scoreDelta;
   spawnScorePop(scoreDelta, slot, placed);
@@ -3162,6 +3171,9 @@ function tick(now) {
     p.vx *= 0.985;
     if (p.life <= 0) state.particles.splice(i, 1);
   }
+  // Mascot bounce envelope
+  if (state.mascotBounce > 0) state.mascotBounce *= 0.92;
+  if (state.mascotBounce < 0.01) state.mascotBounce = 0;
   // Screen shake decay
   if (state.shake > 0) state.shake *= 0.85;
   if (state.shake < 0.2) state.shake = 0;
@@ -3201,6 +3213,7 @@ function tick(now) {
     }
   }
   drawAll();
+  drawMascot();
   requestAnimationFrame(tick);
 }
 
@@ -3263,12 +3276,68 @@ function showComboFlash(combo, lines) {
   sfx('star');
 }
 
-// === Mascot removed in v0.3.1 — was a canvas-drawn chubby cube in the
-// top-right that bounced on placements/clears. Cluttered the increasingly
-// dense top area (XP bar, Power Hour banner, inventory pills, icon
-// buttons). Visual feedback for placements is now carried entirely by
-// the existing screen shake, particles, combo flash, and score popups.
-// `roundedRectPath` is retained because shareCard generation uses it.
+// ============================================================
+// === 10. MASCOT (canvas-drawn chubby cube)
+// ============================================================
+
+const mcvs = document.getElementById('mascot-canvas');
+const mctx = mcvs.getContext('2d');
+let mascotPhase = 0;
+function drawMascot() {
+  mascotPhase += 0.03;
+  const w = mcvs.width, h = mcvs.height;
+  mctx.clearRect(0, 0, w, h);
+  const bx = 16, by = 28;
+  const bw = w - 32, bh = h - 50;
+  // Bounce squash
+  const sq = state.mascotBounce > 0 ? state.mascotBounce : 0;
+  const squashY = 1 - sq * 0.18;
+  const squashX = 1 + sq * 0.12;
+  const idle = Math.sin(mascotPhase) * 1.5;
+  mctx.save();
+  mctx.translate(bx + bw / 2, by + bh + idle);
+  mctx.scale(squashX, squashY);
+  // Shadow
+  mctx.fillStyle = 'rgba(0,0,0,0.18)';
+  mctx.beginPath();
+  mctx.ellipse(0, 6, bw / 2.2, 6, 0, 0, Math.PI * 2);
+  mctx.fill();
+  // Body (chubby cube)
+  const r = bw * 0.22;
+  mctx.fillStyle = '#FFB100';
+  roundedRectPath(mctx, -bw / 2, -bh, bw, bh, r);
+  mctx.fill();
+  mctx.fillStyle = '#E89400';
+  roundedRectPath(mctx, -bw / 2, -bh + bh * 0.78, bw, bh * 0.22, r);
+  mctx.fill();
+  // Highlight stripe
+  mctx.fillStyle = 'rgba(255,255,255,0.32)';
+  roundedRectPath(mctx, -bw / 2 + 6, -bh + 4, bw - 12, 8, 4);
+  mctx.fill();
+  // Eyes
+  const eyeY = -bh * 0.55;
+  const eyeR = bw * 0.07;
+  mctx.fillStyle = '#2A1B0A';
+  mctx.beginPath(); mctx.arc(-bw * 0.18, eyeY, eyeR, 0, Math.PI * 2); mctx.fill();
+  mctx.beginPath(); mctx.arc( bw * 0.18, eyeY, eyeR, 0, Math.PI * 2); mctx.fill();
+  // Eye shine
+  mctx.fillStyle = 'white';
+  mctx.beginPath(); mctx.arc(-bw * 0.16, eyeY - eyeR * 0.4, eyeR * 0.35, 0, Math.PI * 2); mctx.fill();
+  mctx.beginPath(); mctx.arc( bw * 0.20, eyeY - eyeR * 0.4, eyeR * 0.35, 0, Math.PI * 2); mctx.fill();
+  // Mouth — bigger when bouncing
+  const smile = sq > 0.05 ? 1.2 : 0.9;
+  mctx.strokeStyle = '#2A1B0A';
+  mctx.lineWidth = 3;
+  mctx.lineCap = 'round';
+  mctx.beginPath();
+  mctx.arc(0, -bh * 0.30, bw * 0.12 * smile, 0.1 * Math.PI, 0.9 * Math.PI);
+  mctx.stroke();
+  // Cheeks
+  mctx.fillStyle = 'rgba(239,71,111,0.45)';
+  mctx.beginPath(); mctx.arc(-bw * 0.30, -bh * 0.40, bw * 0.06, 0, Math.PI * 2); mctx.fill();
+  mctx.beginPath(); mctx.arc( bw * 0.30, -bh * 0.40, bw * 0.06, 0, Math.PI * 2); mctx.fill();
+  mctx.restore();
+}
 function roundedRectPath(c, x, y, w, h, r) {
   c.beginPath();
   c.moveTo(x + r, y);
@@ -3281,6 +3350,9 @@ function roundedRectPath(c, x, y, w, h, r) {
   c.lineTo(x, y + r);
   c.quadraticCurveTo(x, y, x + r, y);
   c.closePath();
+}
+function bounceMascot(amount) {
+  state.mascotBounce = Math.min(1.0, state.mascotBounce + amount);
 }
 
 // ============================================================
