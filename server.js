@@ -247,6 +247,21 @@ function validateInitData(initData) {
   } catch (e) { return null; }
 }
 
+// Auto-observe public URL from the first incoming request with an x-forwarded
+// host header. Falls back here if PUBLIC_DOMAIN env var is missing or
+// truncated (Render's Blueprint sometimes returns just the subdomain prefix).
+app.use((req, res, next) => {
+  if (!PUBLIC_URL_OBSERVED) {
+    const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+    const proto = (req.headers['x-forwarded-proto'] || '').split(',')[0] || 'https';
+    if (host && host.includes('.') && !host.startsWith('localhost')) {
+      PUBLIC_URL_OBSERVED = proto + '://' + host;
+      console.log('[server] observed public URL:', PUBLIC_URL_OBSERVED);
+    }
+  }
+  next();
+});
+
 // Static — every file in this dir, with no-cache on .html so a redeploy is
 // visible in Telegram WebView without forcing the user to clear caches.
 app.use(express.static(__dirname, {
@@ -310,11 +325,21 @@ setInterval(() => {
   } catch (e) {}
 }, 60 * 60 * 1000);
 
-// Canonical "where is this server reachable from?" helper.
+// Canonical "where is this server reachable from?" helper. Three layers:
+//   1. PUBLIC_DOMAIN env var (manual override; takes precedence if it
+//      looks valid — i.e. contains a dot, so we don't accidentally use a
+//      Render Blueprint `host` value that only returns the subdomain prefix)
+//   2. RAILWAY_PUBLIC_DOMAIN (carry-over from Match Icon's Railway days)
+//   3. Observed via x-forwarded-host header on the first incoming request
+//      with a real-looking host. Captured by the middleware below. Self-heals
+//      when the env var is wrong/missing.
+let PUBLIC_URL_OBSERVED = '';
 function getPublicUrl() {
   const d = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN || '';
-  if (!d) return '';
-  return /^https?:\/\//i.test(d) ? d : 'https://' + d;
+  if (d && d.includes('.')) {
+    return /^https?:\/\//i.test(d) ? d : 'https://' + d;
+  }
+  return PUBLIC_URL_OBSERVED;
 }
 function buildPlayUrl() {
   return getPublicUrl() || 'http://localhost:' + PORT;
