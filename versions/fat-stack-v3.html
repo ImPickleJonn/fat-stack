@@ -47,44 +47,6 @@
   --shadow: rgba(0, 0, 0, 0.5);
   --shadow-soft: rgba(0, 0, 0, 0.3);
 }
-
-/* Skins — tile palette swaps. Applied via [data-skin="X"] on <html>. */
-[data-skin="wood"] {
-  --bg: #F5E1B5;
-  --board-bg: #C9985B;
-  --cell-empty: #B8854B;
-  --cell-empty-edge: #8E6536;
-  --text: #3D2814;
-  --text-soft: #6E4E2E;
-  --accent: #D9772E;
-  --accent-dark: #A05317;
-  --shadow: rgba(40, 25, 0, 0.30);
-  --shadow-soft: rgba(40, 25, 0, 0.18);
-  --t0: #E36B3D; --t0e: #A8442A;
-  --t1: #6CAE52; --t1e: #4A7F38;
-  --t2: #8E5E94; --t2e: #5F3F64;
-  --t3: #3E84A6; --t3e: #2A5B74;
-  --t4: #C44B5A; --t4e: #8B3340;
-  --t5: #E0B14E; --t5e: #A7822F;
-}
-[data-skin="neon"] {
-  --bg: #0A0820;
-  --board-bg: #14102E;
-  --cell-empty: #221945;
-  --cell-empty-edge: #3A2B6A;
-  --text: #F5F0FF;
-  --text-soft: #A89BD1;
-  --accent: #FFE066;
-  --accent-dark: #FFB100;
-  --shadow: rgba(0, 0, 30, 0.6);
-  --shadow-soft: rgba(0, 0, 30, 0.35);
-  --t0: #FF3D7F; --t0e: #B82660;
-  --t1: #00F0B5; --t1e: #00A47C;
-  --t2: #C77DFF; --t2e: #8B4FBF;
-  --t3: #00C2FF; --t3e: #008CC5;
-  --t4: #FF5C5C; --t4e: #B83E3E;
-  --t5: #FFEC51; --t5e: #C5B22A;
-}
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
   margin: 0; padding: 0; height: 100%; overflow: hidden;
@@ -449,65 +411,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
   color: var(--text); box-shadow: 0 2px 0 var(--shadow);
 }
 .gem-pill .g-icon { font-size: 18px; }
-
-/* Inventory pills row above the canvas */
-.inv-row {
-  display: flex; gap: 6px; padding: 0 12px 6px;
-  flex-wrap: wrap;
-}
-.inv-pill {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: var(--board-bg); border-radius: 999px;
-  padding: 4px 11px; font-weight: 800; font-size: 12px;
-  color: var(--text); box-shadow: 0 2px 0 var(--shadow);
-  cursor: default;
-}
-.inv-pill .i-icon { font-size: 14px; }
-.inv-pill.zero { opacity: 0.5; }
-.inv-pill.tappable { cursor: pointer; transition: transform 80ms; }
-.inv-pill.tappable:active { transform: translateY(2px); }
-.inv-pill.tappable.hot {
-  background: linear-gradient(135deg, var(--accent), var(--gold));
-  color: var(--text); box-shadow: 0 2px 0 var(--accent-dark);
-  animation: hintPulse 1500ms ease-in-out infinite;
-}
-@keyframes hintPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-}
-
-/* Skin picker in Settings */
-.skin-row {
-  display: flex; gap: 8px; padding: 4px 0 12px;
-  overflow-x: auto;
-}
-.skin-card {
-  flex: 0 0 auto; width: 76px;
-  padding: 8px 6px; border-radius: 12px;
-  background: var(--board-bg); box-shadow: 0 3px 0 var(--shadow);
-  text-align: center; cursor: pointer;
-  transition: transform 80ms;
-  position: relative;
-}
-.skin-card:active { transform: translateY(2px); }
-.skin-card.active {
-  outline: 3px solid var(--accent);
-  outline-offset: 1px;
-}
-.skin-card.locked { opacity: 0.55; }
-.skin-card .swatches {
-  display: flex; gap: 2px;
-  justify-content: center; margin-bottom: 4px;
-}
-.skin-card .sw {
-  width: 12px; height: 12px; border-radius: 3px;
-}
-.skin-card .name {
-  font-size: 11px; font-weight: 800; color: var(--text);
-}
-.skin-card .lock-icon {
-  position: absolute; top: 4px; right: 6px; font-size: 12px;
-}
 </style>
 </head>
 <body>
@@ -533,7 +436,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
         <div class="btn-icon" id="btn-settings" title="Settings">⚙</div>
       </div>
     </div>
-    <div class="inv-row" id="inv-row"></div>
     <canvas id="mascot-canvas" width="128" height="128"></canvas>
     <div id="game-canvas-wrap">
       <canvas id="game-canvas"></canvas>
@@ -626,10 +528,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       <div class="lbl" data-i18n="setLang">Language</div>
       <select id="lang-select"></select>
     </div>
-    <div class="setting-row" style="flex-direction:column; align-items:stretch;">
-      <div class="lbl" data-i18n="setSkin" style="margin-bottom:6px;">Skin</div>
-      <div class="skin-row" id="skin-row"></div>
-    </div>
     <div class="setting-row">
       <div class="lbl" data-i18n="setTheme">Dark mode</div>
       <div class="toggle" id="toggle-theme"></div>
@@ -647,22 +545,12 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       <div class="toggle" id="toggle-music"></div>
     </div>
     <div class="divider"></div>
-    <button class="btn secondary" data-action="reset-progress" style="background:transparent;color:var(--danger);box-shadow:none;border:1.5px solid var(--danger);" data-i18n="resetProgress">Reset progress</button>
     <p class="small">
       <a href="privacy.html" target="_blank" data-i18n="privacy">Privacy</a> ·
       <a href="terms.html" target="_blank" data-i18n="terms">Terms</a>
     </p>
     <p class="small" id="version-line"></p>
     <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-confirm-reset">
-  <div class="modal">
-    <h2 data-i18n="resetTitle">Reset progress?</h2>
-    <p data-i18n="resetSub">All scores, streaks, gems, revives, hints, and purchases will be wiped. Cannot be undone.</p>
-    <button class="btn" style="background:var(--danger);box-shadow:0 4px 0 #b8324f;" data-action="reset-confirm" data-i18n="resetConfirm">Yes, wipe it</button>
-    <button class="btn secondary" data-action="close-modal" data-i18n="close">Cancel</button>
   </div>
 </div>
 
@@ -696,14 +584,6 @@ const SHOP_ORDER = ['starter_pack', 'revive', 'hint_pack', 'no_bust', 'gems_smal
 
 // Daily login chest — 7-day cycle, escalating rewards in gems.
 const CHEST_REWARDS = [25, 50, 75, 100, 150, 250, 500];
-
-// Skin catalog. 'default' is free; others must be in state.skins to equip.
-// Swatch colors are display-only (the actual palette comes from CSS [data-skin]).
-const SKINS = [
-  { id: 'default', tKey: 'skinDefault', swatches: ['#FF6B35','#06D6A0','#9D4EDD','#118AB2','#EF476F','#FFD166'] },
-  { id: 'wood',    tKey: 'skinWood',    swatches: ['#E36B3D','#6CAE52','#8E5E94','#3E84A6','#C44B5A','#E0B14E'] },
-  { id: 'neon',    tKey: 'skinNeon',    swatches: ['#FF3D7F','#00F0B5','#C77DFF','#00C2FF','#FF5C5C','#FFEC51'] },
-];
 
 // Missions table — local-only for v0.2 (no server-side verification yet).
 //   type: 'daily' resets every day. 'one_time' fires once per account.
@@ -800,8 +680,6 @@ const state = {
   welcomed: false,
   mascotBounce: 0,
   shake: 0,
-  hintActive: null,              // { slotIdx, gx, gy, cells } — set by useHint
-  hintExpiresAt: 0,
 };
 
 function makeEmptyBoard() {
@@ -923,16 +801,6 @@ const STRINGS = {
     go: 'GO', check: 'CHECK', claim: 'CLAIM', done: 'DONE',
     chestReady: '🎁 Daily chest ready!',
     claimed: 'Claimed +{n} 💎',
-    setSkin: 'Skin',
-    skinDefault: 'Classic', skinWood: 'Wood', skinNeon: 'Neon',
-    noHints: 'No hints — buy in Shop',
-    noMoves: 'No valid moves',
-    noBustSaved: '🛡 No-Bust saved you!',
-    linesCleared: 'Lines', maxCombo: 'Max combo', duration: 'Duration',
-    resetProgress: 'Reset progress',
-    resetTitle: 'Reset progress?',
-    resetSub: 'All scores, streaks, gems, revives, hints, and purchases will be wiped. This cannot be undone.',
-    resetConfirm: 'Yes, wipe it',
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -985,16 +853,6 @@ const STRINGS = {
     go: 'ВПЕРЁД', check: 'ПРОВЕРИТЬ', claim: 'ЗАБРАТЬ', done: 'ГОТОВО',
     chestReady: '🎁 Сундук готов!',
     claimed: 'Получено +{n} 💎',
-    setSkin: 'Скин',
-    skinDefault: 'Классика', skinWood: 'Дерево', skinNeon: 'Неон',
-    noHints: 'Нет подсказок — купи в магазине',
-    noMoves: 'Нет ходов',
-    noBustSaved: '🛡 Страховка спасла!',
-    linesCleared: 'Линий', maxCombo: 'Макс. комбо', duration: 'Время',
-    resetProgress: 'Сбросить прогресс',
-    resetTitle: 'Сбросить прогресс?',
-    resetSub: 'Все очки, серии, гемы, оживления, подсказки и покупки будут стёрты. Отменить нельзя.',
-    resetConfirm: 'Да, стереть',
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -1740,32 +1598,6 @@ function drawBoard() {
       drawTile(ox + x * CELL, oy + y * CELL, CELL, v, scale, alpha);
     }
   }
-  // Hint overlay — pulsing golden outline over the best placement.
-  if (state.hintActive) {
-    const pulse = 0.55 + 0.35 * Math.sin(Date.now() / 180);
-    const slot = state.tray[state.hintActive.slotIdx];
-    if (slot && !slot.used) {
-      for (const [gx, gy] of state.hintActive.cells) {
-        const cx = ox + gx * CELL;
-        const cy = oy + gy * CELL;
-        ctx.save();
-        ctx.globalAlpha = 0.45 * pulse + 0.25;
-        drawTile(cx, cy, CELL, slot.colorIdx, 0.94, 1);
-        ctx.restore();
-        ctx.save();
-        ctx.strokeStyle = cssVar('--accent');
-        ctx.lineWidth = 3;
-        ctx.globalAlpha = pulse;
-        const inset = Math.max(2, CELL * 0.06);
-        drawRoundedRect(cx + inset, cy + inset, CELL - inset * 2, CELL - inset * 2, CELL * 0.14);
-        ctx.stroke();
-        ctx.restore();
-      }
-    } else {
-      // Slot is gone (was placed) — drop the hint.
-      state.hintActive = null;
-    }
-  }
 }
 
 function drawTray() {
@@ -1944,60 +1776,6 @@ function anyShapeFits(shape) {
   }
   return false;
 }
-
-// Hint scorer — scans every tray piece × every grid position, returns the
-// single placement that scores best (clears first, then prefers placements
-// that hug existing tiles for tighter board geometry). Used by the 💡 hint
-// power-up.
-function findBestPlacement() {
-  let best = null;
-  for (let i = 0; i < state.tray.length; i++) {
-    const slot = state.tray[i];
-    if (!slot || slot.used) continue;
-    for (let y = 0; y < GRID; y++) {
-      for (let x = 0; x < GRID; x++) {
-        if (!canPlaceAt(slot.shape, x, y)) continue;
-        const placed = slot.shape.cells.map(([dx, dy]) => [x + dx, y + dy]);
-        const clears = wouldClear(placed);
-        const lines = clears.rows.length + clears.cols.length;
-        // Adjacency: how many of the placed cells touch an existing filled tile?
-        let adj = 0;
-        for (const [cx, cy] of placed) {
-          if (cx > 0 && state.board[cy][cx - 1] >= 0) adj++;
-          if (cx < GRID - 1 && state.board[cy][cx + 1] >= 0) adj++;
-          if (cy > 0 && state.board[cy - 1][cx] >= 0) adj++;
-          if (cy < GRID - 1 && state.board[cy + 1][cx] >= 0) adj++;
-        }
-        // Score formula: line-clears dominate, then adjacency, then piece size
-        // (slight preference for using bigger pieces when nothing else changes).
-        const score = lines * 1000 + adj * 10 + placed.length;
-        if (!best || score > best.score) {
-          best = { slotIdx: i, gx: x, gy: y, cells: placed, score };
-        }
-      }
-    }
-  }
-  return best;
-}
-
-function useHint() {
-  if (state.hints <= 0) {
-    toast(t('noHints'));
-    switchTab('shop');
-    return;
-  }
-  if (state.gameOver) return;
-  const best = findBestPlacement();
-  if (!best) { toast(t('noMoves')); return; }
-  state.hints -= 1;
-  state.hintActive = best;          // drawBoard reads this to render the glow
-  state.hintExpiresAt = Date.now() + 4000;
-  updateInventoryPills();
-  save();
-  TG.haptic('light');
-  sfx('star');
-  track('hint_used', { hints_remaining: state.hints });
-}
 function checkGameOver() {
   for (const slot of state.tray) {
     if (!slot || slot.used) continue;
@@ -2098,8 +1876,6 @@ function onPointerCancel(e) {
 }
 
 function placePieceAt(slot, gx, gy, slotIdx) {
-  // Placing a piece clears any active hint (it may have pointed at this slot).
-  if (state.hintActive) { state.hintActive = null; state.hintExpiresAt = 0; updateInventoryPills(); }
   const colorIdx = slot.colorIdx;
   const placed = placeAt(slot.shape, gx, gy, colorIdx);
   slot.used = true;
@@ -2199,13 +1975,6 @@ function tick(now) {
   if (state.comboTimer > 0) {
     state.comboTimer -= dt;
     if (state.comboTimer <= 0) state.combo = 0;
-  }
-  // Hint expires after 4s — also fire updateInventoryPills so the 💡 pill loses
-  // its "hot" pulse when there are still hints in inventory.
-  if (state.hintActive && state.hintExpiresAt && now > state.hintExpiresAt) {
-    state.hintActive = null;
-    state.hintExpiresAt = 0;
-    updateInventoryPills();
   }
   drawAll();
   drawMascot();
@@ -2358,35 +2127,6 @@ function updateHud() {
   document.getElementById('hud-score').textContent = formatNum(state.score);
   document.getElementById('hud-best').textContent = formatNum(state.best);
   document.getElementById('hud-streak').textContent = state.streak;
-  updateInventoryPills();
-}
-
-function updateInventoryPills() {
-  const row = document.getElementById('inv-row');
-  if (!row) return;
-  const pills = [
-    { id: 'gems',    icon: '💎', count: state.gems,    tappable: false },
-    { id: 'revives', icon: '💖', count: state.revives, tappable: false },
-    { id: 'hints',   icon: '💡', count: state.hints,   tappable: state.hints > 0, hot: state.hints > 0 && !state.hintActive, action: 'use-hint' },
-    { id: 'no_bust', icon: '🛡', count: state.noBust,  tappable: false },
-  ];
-  // Battle Pass — only show if active.
-  if (state.battlePassUntil && state.battlePassUntil > Date.now()) {
-    const days = Math.ceil((state.battlePassUntil - Date.now()) / (24 * 60 * 60 * 1000));
-    pills.push({ id: 'bp', icon: '🎖', count: days + 'd', tappable: false });
-  }
-  row.innerHTML = '';
-  for (const p of pills) {
-    if (typeof p.count === 'number' && p.count === 0 && p.id !== 'hints') continue;   // hide zero counts (except hints which is the action button)
-    const el = document.createElement('div');
-    el.className = 'inv-pill'
-      + (p.count === 0 ? ' zero' : '')
-      + (p.tappable ? ' tappable' : '')
-      + (p.hot ? ' hot' : '');
-    el.innerHTML = '<span class="i-icon">' + p.icon + '</span><span>' + p.count + '</span>';
-    if (p.action) el.setAttribute('data-action', p.action);
-    row.appendChild(el);
-  }
 }
 function formatNum(n) {
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -2633,9 +2373,6 @@ document.addEventListener('click', (e) => {
     const id = a.getAttribute('data-mid');
     missionAction(id, 'claim');
   }
-  else if (action === 'use-hint') { useHint(); }
-  else if (action === 'reset-progress') { openModal('modal-confirm-reset'); }
-  else if (action === 'reset-confirm') { resetProgress(); }
 });
 
 // Tab bar wiring
@@ -2702,44 +2439,6 @@ function applyTheme() {
   document.documentElement.setAttribute('data-theme', state.settings.theme === 'dark' ? 'dark' : 'light');
 }
 
-function applySkin() {
-  const id = state.activeSkin || 'default';
-  if (id === 'default') {
-    document.documentElement.removeAttribute('data-skin');
-  } else {
-    document.documentElement.setAttribute('data-skin', id);
-  }
-}
-
-function renderSkinPicker() {
-  const row = document.getElementById('skin-row');
-  if (!row) return;
-  row.innerHTML = '';
-  for (const s of SKINS) {
-    const owned = s.id === 'default' || state.skins.includes(s.id);
-    const card = document.createElement('div');
-    card.className = 'skin-card'
-      + (state.activeSkin === s.id ? ' active' : '')
-      + (!owned ? ' locked' : '');
-    const sw = s.swatches.map(c => '<span class="sw" style="background:' + c + '"></span>').join('');
-    card.innerHTML =
-      (!owned ? '<div class="lock-icon">🔒</div>' : '') +
-      '<div class="swatches">' + sw + '</div>' +
-      '<div class="name">' + t(s.tKey) + '</div>';
-    card.addEventListener('click', () => {
-      if (!owned) { switchTab('shop'); closeAllModals(); return; }
-      const from = state.activeSkin;
-      state.activeSkin = s.id;
-      applySkin();
-      renderSkinPicker();
-      save();
-      TG.haptic('select');
-      track('skin_change', { from, to: s.id });
-    });
-    row.appendChild(card);
-  }
-}
-
 // Language selector
 function populateLangSelect() {
   const sel = document.getElementById('lang-select');
@@ -2754,7 +2453,7 @@ function populateLangSelect() {
   sel.addEventListener('change', () => {
     const from = state.settings.lang;
     state.settings.lang = sel.value;
-    applyI18n(); renderShop(); renderEarn(); renderSkinPicker(); save();
+    applyI18n(); renderShop(); renderEarn(); save();
     track('lang_change', { from, to: sel.value });
   });
 }
@@ -2825,20 +2524,8 @@ function applyGrant(grant) {
   if (grant.revives) state.revives += grant.revives;
   if (grant.hints)   state.hints   += grant.hints;
   if (grant.noBust)  state.noBust  += grant.noBust;
-  if (grant.skins) {
-    for (const s of grant.skins) { if (!state.skins.includes(s)) state.skins.push(s); }
-    // Auto-equip the newest skin so the buy is instantly visible.
-    const newSkin = grant.skins[grant.skins.length - 1];
-    if (newSkin && newSkin !== state.activeSkin) {
-      state.activeSkin = newSkin;
-      applySkin();
-      renderSkinPicker();
-      track('skin_change', { from: null, to: newSkin, source: 'iap' });
-    }
-  }
+  if (grant.skins)   for (const s of grant.skins) { if (!state.skins.includes(s)) state.skins.push(s); }
   if (grant.battlePass) state.battlePassUntil = Math.max(state.battlePassUntil, Date.now() + grant.battlePass * 24 * 60 * 60 * 1000);
-  // Refresh inventory pills + shop tile state.
-  updateInventoryPills();
 }
 
 function tryRevive() {
@@ -2998,19 +2685,6 @@ function newGame() {
 }
 
 function onGameOver() {
-  // No-Bust insurance — auto-consume before showing the modal. The player
-  // bought peace of mind; deliver it without making them tap.
-  if (state.noBust > 0) {
-    state.noBust -= 1;
-    save();
-    track('no_bust_triggered', { remaining: state.noBust, score: state.score });
-    toast(t('noBustSaved'));
-    TG.haptic('success');
-    sfx('star');
-    doRevive('no_bust');
-    updateInventoryPills();
-    return;
-  }
   state.gameOver = true;
   sfx('gameover');
   TG.haptic('error');
@@ -3018,37 +2692,18 @@ function onGameOver() {
   // Mission counter: only count a finished game (not revived) toward daily quests.
   rolloverDailyCountersIfNeeded();
   state.gamesPlayedToday += 1;
-  // Compose stats block for the game-over modal.
-  const duration = state.gameStartedAt ? Math.round((Date.now() - state.gameStartedAt) / 1000) : 0;
-  const mm = String(Math.floor(duration / 60)).padStart(2, '0');
-  const ss = String(duration % 60).padStart(2, '0');
-  document.getElementById('go-summary').innerHTML =
-    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px 16px; margin:8px auto 12px; max-width:280px; text-align:left;">' +
-      '<div><b>' + t('score') + ':</b> ' + formatNum(state.score) + '</div>' +
-      '<div><b>' + t('best') + ':</b> ' + formatNum(state.best) + '</div>' +
-      '<div><b>' + t('linesCleared') + ':</b> ' + (state.linesClearedThisGame || 0) + '</div>' +
-      '<div><b>' + t('maxCombo') + ':</b> ' + (state.maxComboThisGame || 0) + '×</div>' +
-      '<div style="grid-column: span 2;"><b>' + t('duration') + ':</b> ' + mm + ':' + ss + '</div>' +
-    '</div>' +
-    (state.score >= state.best && state.best > 0 ? '<div style="color:var(--accent-dark);font-weight:900;">' + t('newBest') + '</div>' : '');
+  document.getElementById('go-summary').textContent =
+    t('gameOverSub') + ' · ' + t('score') + ': ' + formatNum(state.score);
   openModal('modal-gameover');
   save();
   track('game_over', {
     score:           state.score,
     is_new_best:     state.score >= state.best,
-    duration_sec:    duration,
+    duration_sec:    state.gameStartedAt ? Math.round((Date.now() - state.gameStartedAt) / 1000) : 0,
     max_combo:       state.maxComboThisGame || 0,
     lines_cleared:   state.linesClearedThisGame || 0,
     games_played_today: state.gamesPlayedToday,
   });
-}
-
-function resetProgress() {
-  try { localStorage.removeItem(STORE_KEY); } catch (e) {}
-  track('progress_reset', { had_gems: state.gems, had_best: state.best });
-  // Reload — simplest way to get a totally clean state without re-initializing
-  // 30 different in-memory variables one by one.
-  location.reload();
 }
 
 // ============================================================
@@ -3112,9 +2767,7 @@ function boot() {
   }
   applyI18n();
   applyTheme();
-  applySkin();
   populateLangSelect();
-  renderSkinPicker();
   fitCanvas();
   rolloverDailyCountersIfNeeded();
   if (!state.tray || state.tray.length !== TRAY || state.tray.every(s => s && s.used)) {
