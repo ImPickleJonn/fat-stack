@@ -117,111 +117,149 @@ console.log('[leaderboard] loaded: regular=' + leaderboard.regular.length + ' da
 console.log('[users] loaded: ' + Object.keys(users).length + ' players');
 
 // ============ Leaderboard seeding ============
-// Fills the leaderboard with realistic-looking entries the first time the
-// server boots with an empty file. RU-leaning name mix + bell-curved scores
-// so the All-Time / Today / Tournament tabs feel alive on day 1. Negative
-// UIDs identify seed rows so real player scores never collide.
+// One pool of fake players, each with a fixed all-time-best score. All three
+// leaderboards (All-Time, Today, Tournament) sample from this pool so the
+// same name = same person across boards, and a player's Today/Tournament
+// score is ALWAYS a fraction of their all-time best (never exceeds it).
+// Negative UIDs distinguish seed rows so real player scores never collide.
+//
+// Score distribution: top 3 elites (50-72k), next 7 pros (30-52k), middle
+// 20 (10-30k), tail 50 (1-12k). Names mix RU + international + flavor.
+const FAKE_PLAYER_NAMES = [
+  'Vladimir', 'Olga', 'Dmitry', 'Tatiana', 'Sergey', 'Anna', 'Pavel',
+  'Elena', 'Igor', 'Natasha', 'Maria', 'Andrei', 'Lena', 'Mikhail',
+  'Yuri', 'Nikita', 'Kate', 'Boris', 'Sasha', 'Vika', 'Roman', 'Daria',
+  'Artyom', 'Polina', 'Liza', 'Kostya', 'Yulia', 'Petr', 'Slava', 'Vova',
+  'Ksenia', 'Marina', 'Inga', 'Galina', 'Lyosha', 'Kira', 'Sonya',
+  'David', 'Sarah', 'Emma', 'John', 'Sophie', 'Liam', 'Ava', 'Noah',
+  'Mia', 'James', 'Olivia', 'Lucas', 'Zoe', 'Felix', 'Nora', 'Henry',
+  'Ben', 'Clara', 'Theo', 'Lila', 'Owen',
+  '🔥 Kuznya', '⚡ Volk', '💎 Zara', '🟧 Stacker', '🎮 NeoMax',
+  'BlockKing', 'StackQueen', 'TileWiz', 'GridLord', 'Cuboid',
+  'Bricklayer', 'PieceMover', 'FatBoy', 'Cascade', 'TetraMaster',
+  'Tower', 'Beacon', 'Forge', 'Rift', 'Echo',
+  'Spark', 'Nova', 'Quasar', 'Aria', 'Mira',
+];
+
+let FAKE_PLAYERS = [];
+function buildFakePlayers() {
+  if (FAKE_PLAYERS.length > 0) return;
+  for (let i = 0; i < FAKE_PLAYER_NAMES.length; i++) {
+    let allTimeBest;
+    if (i < 3)       allTimeBest = 50000 + Math.floor(Math.random() * 22000);   // elites 50-72k
+    else if (i < 10) allTimeBest = 30000 + Math.floor(Math.random() * 22000);   // pros 30-52k
+    else if (i < 30) allTimeBest = 10000 + Math.floor(Math.random() * 20000);   // mid 10-30k
+    else if (i < 60) allTimeBest = 4000 + Math.floor(Math.random() * 8000);     // casual 4-12k
+    else             allTimeBest = 1000 + Math.floor(Math.random() * 3000);     // tail 1-4k
+    FAKE_PLAYERS.push({
+      uid: -(1000 + i),
+      name: FAKE_PLAYER_NAMES[i],
+      allTimeBest,
+    });
+  }
+  FAKE_PLAYERS.sort((a, b) => b.allTimeBest - a.allTimeBest);
+}
+
+// Strip out seed rows (negative UIDs) so they can be re-generated cleanly
+// against the current FAKE_PLAYERS pool. Real player scores (positive UIDs)
+// are preserved exactly. Split into two helpers because the `tournament`
+// variable is declared later in the file (TDZ).
+function purgeLeaderboardSeeds() {
+  const regBefore = leaderboard.regular.length;
+  const dailyBefore = Object.values(leaderboard.daily).reduce((s, arr) => s + arr.length, 0);
+  leaderboard.regular = leaderboard.regular.filter(e => e.uid >= 0);
+  for (const ymd of Object.keys(leaderboard.daily)) {
+    leaderboard.daily[ymd] = leaderboard.daily[ymd].filter(e => e.uid >= 0);
+    if (leaderboard.daily[ymd].length === 0) delete leaderboard.daily[ymd];
+  }
+  console.log('[seeds] leaderboard purged — regular ' + regBefore + '→' + leaderboard.regular.length
+    + ', daily ' + dailyBefore + '→' + Object.values(leaderboard.daily).reduce((s, a) => s + a.length, 0));
+}
+function purgeTournamentSeeds() {
+  if (!tournament || tournament.closed) return;
+  const before = tournament.entries.length;
+  tournament.entries = tournament.entries.filter(e => e.uid >= 0);
+  console.log('[seeds] tournament purged — ' + before + '→' + tournament.entries.length);
+}
+
 function seedLeaderboardIfEmpty() {
-  const NAMES = [
-    'Vladimir', 'Olga', 'Dmitry', 'Tatiana', 'Sergey', 'Anna', 'Pavel',
-    'Elena', 'Igor', 'Natasha', 'Maria', 'Andrei', 'Lena', 'Mikhail',
-    'Yuri', 'Nikita', 'Kate', 'Boris', 'Sasha', 'Vika', 'Roman', 'Daria',
-    'Артём', 'Полина', 'Лиза', 'Костя', 'Юля',
-    'David', 'Sarah', 'Emma', 'John', 'Sophie', 'Liam', 'Ava', 'Noah',
-    'Mia', 'James', 'Olivia', 'Lucas', 'Zoe',
-    '🔥 Kuznya', '⚡ Volk', '💎 Zara', '🟧 Stacker', '🎮 NeoMax',
-    'BlockKing', 'StackQueen', 'TileWiz', 'GridLord', 'Cuboid',
-    'Bricklayer', 'PieceMover', 'FatBoy', 'Cascade', 'TetraMaster',
-  ];
-  function bellScore(rank) {
-    // Top-3 elite, then steady decay.
-    if (rank < 3) return 45000 + Math.floor(Math.random() * 20000);
-    if (rank < 10) return 25000 + Math.floor(Math.random() * 18000);
-    if (rank < 30) return 10000 + Math.floor(Math.random() * 14000);
-    if (rank < 60) return 4000 + Math.floor(Math.random() * 6000);
-    return 1500 + Math.floor(Math.random() * 2500);
-  }
-  function randomName(i) {
-    const base = NAMES[i % NAMES.length];
-    return i >= NAMES.length ? (base + ' ' + (i + 1)) : base;
-  }
-  // All-Time leaderboard. Top up to 80 entries even if some real ones exist
-  // (the original "only if empty" check left a 1-entry leaderboard looking
-  // dead while today's daily was full of seed entries).
+  buildFakePlayers();
+  // All-Time: take every fake player at their all-time best, sort, top up
+  // to TARGET_REGULAR alongside any real entries.
   const TARGET_REGULAR = 80;
   if (leaderboard.regular.length < TARGET_REGULAR) {
     const existingUids = new Set(leaderboard.regular.map(e => e.uid));
     const entries = leaderboard.regular.slice();
-    const added = [];
-    for (let i = 0; entries.length < TARGET_REGULAR && i < 200; i++) {
-      const uid = -(1000 + i);
-      if (existingUids.has(uid)) continue;
-      const seed = {
-        uid,
-        name: randomName(i),
-        score: bellScore(i),
+    for (const p of FAKE_PLAYERS) {
+      if (entries.length >= TARGET_REGULAR) break;
+      if (existingUids.has(p.uid)) continue;
+      entries.push({
+        uid: p.uid,
+        name: p.name,
+        score: p.allTimeBest,
         ts: Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000),
-      };
-      entries.push(seed);
-      added.push(seed);
+      });
     }
     entries.sort((a, b) => b.score - a.score);
     leaderboard.regular = entries.slice(0, 100);
-    console.log('[leaderboard] topped up regular with ' + added.length + ' seed entries (now ' + leaderboard.regular.length + ')');
+    console.log('[leaderboard] regular: ' + leaderboard.regular.length + ' entries');
   }
-  // Today's daily leaderboard.
+  // Today's daily: sample ~40 random players from the pool. Each player's
+  // daily score = 35-75% of their all-time best — never exceeds it.
   const today = ymdUTC();
-  if (!leaderboard.daily[today] || leaderboard.daily[today].length === 0) {
-    const entries = [];
-    // Use a smaller pool — only ~40 entries for today's daily (mirrors realistic engagement curve).
-    for (let i = 0; i < 40; i++) {
+  const TARGET_DAILY = 40;
+  if (!leaderboard.daily[today] || leaderboard.daily[today].length < TARGET_DAILY) {
+    const existing = (leaderboard.daily[today] || []).slice();
+    const existingUids = new Set(existing.map(e => e.uid));
+    const entries = existing;
+    // Shuffle a copy so each day picks a different subset.
+    const pool = FAKE_PLAYERS.slice().sort(() => Math.random() - 0.5);
+    for (const p of pool) {
+      if (entries.length >= TARGET_DAILY) break;
+      if (existingUids.has(p.uid)) continue;
+      const factor = 0.35 + Math.random() * 0.40;   // 35% – 75% of all-time best
       entries.push({
-        uid: -(2000 + i),
-        name: randomName(i + 7),
-        score: bellScore(i),
+        uid: p.uid,
+        name: p.name,
+        score: Math.floor(p.allTimeBest * factor),
         ts: Date.now() - Math.floor(Math.random() * 8 * 60 * 60 * 1000),
       });
     }
     entries.sort((a, b) => b.score - a.score);
     leaderboard.daily[today] = entries.slice(0, 100);
-    console.log('[leaderboard] seeded ' + entries.length + ' daily entries for ' + today);
+    console.log('[leaderboard] daily ' + today + ': ' + leaderboard.daily[today].length + ' entries');
   }
   saveLeaderboard(leaderboard);
 }
 function seedTournamentIfEmpty() {
+  buildFakePlayers();
   if (!tournament || tournament.closed) return;
   const TARGET_T = 25;
   if (tournament.entries.length >= TARGET_T) return;
-  const NAMES = [
-    'Vladimir', 'Anna', 'Pavel', 'Elena', 'Sergey', 'Olga', 'Maria',
-    'Dmitry', 'Tatiana', 'Andrei', 'Nikita', 'Kate', 'David', 'Sarah',
-    'Emma', '🔥 Kuznya', '⚡ Volk', '💎 Zara', '🟧 Stacker', 'TileWiz',
-    'GridLord', 'Cuboid', 'BlockKing', 'StackQueen', 'NeoMax',
-  ];
   const existingUids = new Set(tournament.entries.map(e => e.uid));
   const entries = tournament.entries.slice();
-  const added = [];
-  for (let i = 0; entries.length < TARGET_T && i < 200; i++) {
-    const uid = -(3000 + i);
-    if (existingUids.has(uid)) continue;
-    let score;
-    if (i < 3) score = 38000 + Math.floor(Math.random() * 12000);
-    else if (i < 10) score = 18000 + Math.floor(Math.random() * 14000);
-    else score = 5000 + Math.floor(Math.random() * 8000);
-    const seed = {
-      uid,
-      name: NAMES[i % NAMES.length] + (i >= NAMES.length ? (' ' + (i + 1)) : ''),
-      score,
+  // Pool players ordered by all-time-best so the tournament top-3 still feels
+  // elite — but with a 45-90% factor (a week to climb, not a single day).
+  const pool = FAKE_PLAYERS.slice();
+  for (const p of pool) {
+    if (entries.length >= TARGET_T) break;
+    if (existingUids.has(p.uid)) continue;
+    const factor = 0.45 + Math.random() * 0.45;     // 45% – 90% of all-time best
+    entries.push({
+      uid: p.uid,
+      name: p.name,
+      score: Math.floor(p.allTimeBest * factor),
       ts: Date.now() - Math.floor(Math.random() * 36 * 60 * 60 * 1000),
-    };
-    entries.push(seed);
-    added.push(seed);
+    });
   }
   entries.sort((a, b) => b.score - a.score);
   tournament.entries = entries.slice(0, 500);
   saveTournament(tournament);
-  console.log('[tournament] topped up with ' + added.length + ' seed entries (now ' + tournament.entries.length + ')');
+  console.log('[tournament] entries: ' + tournament.entries.length);
 }
+// Purge stale leaderboard seeds (previous deploys may have left inconsistent
+// scores). Then re-seed from FAKE_PLAYERS so today's score ≤ all-time best.
+purgeLeaderboardSeeds();
 seedLeaderboardIfEmpty();
 // seedTournamentIfEmpty() is called after ensureTournament() — the tournament
 // variable is declared in the next section.
@@ -615,6 +653,9 @@ function ensureTournament() {
   }
 }
 ensureTournament();
+// Same purge-then-reseed for the tournament, after the tournament variable
+// is initialized.
+purgeTournamentSeeds();
 seedTournamentIfEmpty();
 
 // ============ Bot identity ============
