@@ -64,7 +64,8 @@ You've got two configs already in the repo — pick whichever host you prefer:
 1. [render.com](https://render.com) → **New +** → **Blueprint** → pick `fat-stack`.
 2. Render reads `render.yaml`, provisions the service.
 3. In **Environment**, set:
-   - `BOT_TOKEN` = the token from step 1
+   - `BOT_TOKEN` = the token from step 1 (**required** — IAP and notifications need it)
+   - `MIXPANEL_TOKEN` = your Mixpanel project token (**optional** — analytics no-op without it). Surfaced to the client via `/api/flags`; client fires events directly to `api.mixpanel.com` so geo resolves from each user's real IP. Every event includes `game: 'fat_stack'` so you can reuse your Match Icon project and split by game.
 4. Render gives you a URL like `https://fat-stack-XXXX.onrender.com`.
 
 ## 4. Register the Telegram webhook
@@ -122,8 +123,45 @@ Open `t.me/<YourBotUsername>` in Telegram. Tap **/start** (or the blue button). 
 | What | Where |
 |---|---|
 | Bot token | @BotFather |
-| Env var | `BOT_TOKEN` |
+| Required env var | `BOT_TOKEN` |
+| Optional env var | `MIXPANEL_TOKEN` |
 | Webhook setup | `POST /api/setup-webhook` with `x-setup-key: <BOT_TOKEN>` |
 | Local dev | `RUN.bat` → `localhost:3000` |
 | Parse-check | see `README.md` |
 | Snapshot before edits | `versions/fat-stack-vN.html` (numeric sort) |
+
+## Mixpanel events fired
+
+For reference — every event includes `game: 'fat_stack'`, the current player state (score, best, streak, gems, revives, skin, lang), and the build `version` so you can split funnels by release.
+
+| Event | When | Key props |
+|---|---|---|
+| `session_start` | App boot, and on resume after 30s+ hidden | `kind: 'start'|'resume'`, `platform`, `start_param`, `lang` |
+| `session_end` | Pagehide / beforeunload, or right before a `resume` start | `duration_sec` |
+| `game_start` | `newGame()` called | — |
+| `game_over` | Real game-over (revives don't fire this) | `score`, `is_new_best`, `duration_sec`, `max_combo`, `lines_cleared`, `games_played_today` |
+| `tab_switch` | Player taps a different tab | `from`, `to` |
+| `iap_attempt` | `buySku()` invoked, before invoice mint | `sku`, `stars` |
+| `iap_purchase` | Telegram returned status `paid` | `sku`, `stars` |
+| `iap_cancelled` / `iap_failed` / `iap_invoice_failed` / `iap_error` | Each failure flavor | `sku`, `error?` |
+| `iap_unavailable` | Player tapped a SKU but `BOT_TOKEN` isn't set | `sku` |
+| `chest_claim` | Daily login chest claimed | `day` (1..7), `reward` |
+| `mission_complete` | Mission reward granted | `mission_id`, `reward`, `mission_type` |
+| `revive_buy_initiated` | Player taps Revive with no revives in inventory | `score` |
+| `revive` | Revive actually applied | `source: 'free'|'unknown'`, `score_at_revive` |
+| `lang_change` | Player switches language | `from`, `to` |
+
+People properties (set once on init via `mxEngage`):
+- `$name`, `$first_name`, `$username`, `tg_lang`, `platform`, `game: 'fat_stack'`
+
+## Boinkers partner mission
+
+The Earn tab includes a "Try Boinkers" mission. URL is currently:
+
+```
+https://t.me/boinker_bot/boinkapp?startapp=campMinemasterFatStack
+```
+
+`campMinemasterFatStack` is a **placeholder** campaign code. Before going live, get a Fat-Stack-specific campaign code from the Boinkers partner team and swap it in `index.html` at the `MISSIONS` array (search for `play_boinkers`). Using Match Icon's existing campaign code (`campMinemasterMatch3Icon`) would credit Match Icon for these referrals — not what you want.
+
+Optional next step (mirrors Match Icon): add `BOINKERS_API_KEY` env var and an `/api/earn/verify-boinkers` endpoint that hits `partner-reports.boinkers.io/api/partner/user`, so the higher-reward `boinkers-level-3` / `boinkers-spin-30` style missions can verify on the server side. For now the v0.2 mission uses client-side trust (GO → CHECK awards the gems), which is fine for the simple "play a round" variant.

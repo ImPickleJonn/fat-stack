@@ -177,11 +177,15 @@ function buildPlayUrl() {
 }
 
 // ============ API ============
-// Feature flags — client polls on boot.
+// Feature flags — client polls on boot. mixpanel_token is a *public* project
+// token (Mixpanel project tokens only allow writing events to the project,
+// not reading), so safe to surface to the client. The client fires events
+// directly to api.mixpanel.com so Mixpanel resolves geo from the user's IP.
 app.get('/api/flags', (req, res) => {
   res.json({
     iap: !!BOT_TOKEN,
     publicUrl: getPublicUrl(),
+    mixpanel_token: process.env.MIXPANEL_TOKEN || '',
   });
 });
 

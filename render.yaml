@@ -38,3 +38,5 @@ services:
           property: host
       - key: BOT_TOKEN
         sync: false            # set manually in dashboard — secret
+      - key: MIXPANEL_TOKEN
+        sync: false            # optional — analytics fires only when set

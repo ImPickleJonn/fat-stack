@@ -561,7 +561,7 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 // === 1. CONSTANTS & STATE
 // ============================================================
 
-const VERSION = 'v0.2.0';
+const VERSION = 'v0.1.0';
 const GRID = 8;
 const TRAY = 3;
 
@@ -607,19 +607,6 @@ const MISSIONS = [
     reward: 100, type: 'one_time',
     url: 'https://t.me/fatstackgame',         // Pickle: replace with real channel
     mode: 'go_check',                          // GO → CHECK award flow
-  },
-  {
-    // Mirrors Match Icon's 'mission_play_boinkers_5min' — partner cross-promo.
-    // Client-trust GO→CHECK flow for v0.2 (no server verify yet). Once Pickle
-    // gets a Fat Stack-specific Boinkers campaign code from the partner, swap
-    // `campMinemasterFatStack` in the URL below + add a server verify like
-    // Match Icon's /api/earn/verify-boinkers for the higher-reward variants.
-    id: 'play_boinkers', icon: '🦫',
-    tKey: 'missPlayBoinkers', subKey: 'missPlayBoinkersSub',
-    reward: 150, type: 'one_time',
-    url: 'https://t.me/boinker_bot/boinkapp?startapp=campMinemasterFatStack',
-    mode: 'go_check',
-    provider: 'Boinkers',
   },
   {
     id: 'share', icon: '🤝', tKey: 'missShare', subKey: 'missShareSub',
@@ -789,7 +776,6 @@ const STRINGS = {
     chestClaim: 'Claim today', chestClaimed: 'Come back tomorrow',
     chestReward: '+{n} gems',
     missFollowTG: 'Follow on Telegram', missFollowTGsub: 'Join our channel for updates',
-    missPlayBoinkers: 'Try Boinkers', missPlayBoinkersSub: 'Our partner game — play a round',
     missShare: 'Share Fat Stack', missShareSub: 'Tap to share with a friend',
     missPlay5: 'Play 5 games today', missPlay5Sub: '{done}/{total} games',
     missDaily: "Play today's daily", missDailySub: '24h puzzle',
@@ -840,7 +826,6 @@ const STRINGS = {
     chestClaim: 'Забрать сегодня', chestClaimed: 'Возвращайся завтра',
     chestReward: '+{n} гемов',
     missFollowTG: 'Подпишись в Telegram', missFollowTGsub: 'Канал с новостями',
-    missPlayBoinkers: 'Попробуй Boinkers', missPlayBoinkersSub: 'Партнёрская игра — сыграй раунд',
     missShare: 'Поделись Fat Stack', missShareSub: 'Расскажи другу',
     missPlay5: 'Сыграй 5 игр сегодня', missPlay5Sub: '{done}/{total} игр',
     missDaily: 'Сыграй сегодняшний', missDailySub: 'Челлендж на 24ч',
@@ -1179,140 +1164,6 @@ function pickInitialLang() {
     if (STRINGS[base]) return base;
   }
   return 'en';
-}
-
-// ============================================================
-// === 3b. ANALYTICS (direct HTTP to Mixpanel — ported from Match Icon)
-// ============================================================
-// Bypasses the Mixpanel JS lib entirely — POSTs events directly to
-// api.mixpanel.com/track via fetch. Telegram WebView sometimes fails to
-// load third-party CDN scripts (cdn.mxpnl.com), which left the lib's stub
-// queueing events that never sent. Direct HTTP has zero deps and Mixpanel
-// still resolves geo from the request IP (which is the USER's IP because
-// the fetch fires from their browser, not our server).
-let __mxToken = '';
-let __mxDistinctId = '';
-function initMixpanel(token) {
-  if (!token) return;
-  __mxToken = token;
-  const u = tg && tg.initDataUnsafe && tg.initDataUnsafe.user;
-  if (u && u.id) {
-    __mxDistinctId = String(u.id);
-    // Set user-level "people" properties so Mixpanel profiles show
-    // username / language / platform. Fire-and-forget.
-    mxEngage({
-      $name:       u.first_name || u.username || ('TG ' + u.id),
-      $first_name: u.first_name || null,
-      $username:   u.username || null,
-      tg_lang:     u.language_code || null,
-      platform:    (tg && tg.platform) || 'unknown',
-      game:        'fat_stack',
-    });
-  } else {
-    // No Telegram user (e.g. opened in a regular browser) — fall back to a
-    // per-device random distinct_id so we can still chart sessions.
-    let did = '';
-    try { did = localStorage.getItem('__mx_did') || ''; } catch (e) {}
-    if (!did) {
-      did = 'anon-' + Math.random().toString(36).slice(2, 12);
-      try { localStorage.setItem('__mx_did', did); } catch (e) {}
-    }
-    __mxDistinctId = did;
-  }
-  // Fire the cold-boot session_start now that token is ready.
-  trackSessionStart();
-}
-function _mxPost(url, body) {
-  // sendBeacon is the most reliable transport for unload-time events
-  // (session_end on page hide). fetch with keepalive is the fallback.
-  try {
-    if (navigator.sendBeacon) {
-      const blob = new Blob([body], { type: 'application/x-www-form-urlencoded' });
-      const ok = navigator.sendBeacon(url, blob);
-      if (ok) return;
-    }
-  } catch (e) {}
-  try {
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body, mode: 'no-cors', keepalive: true,
-    }).catch(() => {});
-  } catch (e) {}
-}
-function mxEngage(setProps) {
-  if (!__mxToken || !__mxDistinctId || !setProps) return;
-  const payload = [{
-    $token: __mxToken,
-    $distinct_id: __mxDistinctId,
-    $time: Date.now(),
-    $set: setProps,
-    $ip: '0',
-  }];
-  const data = btoa(JSON.stringify(payload));
-  _mxPost('https://api.mixpanel.com/engage?ip=1', 'data=' + encodeURIComponent(data));
-}
-function track(event, props) {
-  if (!__mxToken) return;
-  try {
-    const baseProps = {
-      token: __mxToken,
-      distinct_id: __mxDistinctId,
-      time: Math.floor(Date.now() / 1000),
-      $insert_id: Math.random().toString(36).slice(2, 18),
-      // Player-state baseline so every event is dimensionable in Mixpanel.
-      score:    state.score,
-      best:     state.best,
-      streak:   state.streak,
-      gems:     state.gems,
-      revives:  state.revives,
-      skin:     state.activeSkin,
-      lang:     state.settings.lang,
-      version:  VERSION,
-      game:     'fat_stack',
-    };
-    const payload = [{
-      event,
-      properties: Object.assign(baseProps, props || {}),
-    }];
-    const data = btoa(JSON.stringify(payload));
-    _mxPost('https://api.mixpanel.com/track?ip=1', 'data=' + encodeURIComponent(data));
-  } catch (e) {}
-}
-// session_start fires on app boot AND on resume after >30s hidden (Telegram
-// users frequently tab-flick for a few seconds — those don't count as new
-// sessions). Together with session_end this gives Mixpanel everything it
-// needs for proper Session / retention reports.
-function trackSessionStart() {
-  const baseProps = () => ({
-    platform:    (tg && tg.platform) || 'unknown',
-    start_param: (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) || null,
-    lang:        (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) || null,
-  });
-  track('session_start', Object.assign(baseProps(), { kind: 'start' }));
-  let sessionStartMs = Date.now();
-  let hiddenAtMs = null;
-  const RESUME_THRESHOLD_MS = 30 * 1000;
-  function endSession() {
-    if (sessionStartMs == null) return;
-    track('session_end', { duration_sec: Math.round((Date.now() - sessionStartMs) / 1000) });
-    sessionStartMs = null;
-  }
-  function startSession(kind) {
-    sessionStartMs = Date.now();
-    track('session_start', Object.assign(baseProps(), { kind }));
-  }
-  window.addEventListener('pagehide', endSession);
-  window.addEventListener('beforeunload', endSession);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') {
-      hiddenAtMs = Date.now();
-    } else if (hiddenAtMs != null) {
-      const gap = Date.now() - hiddenAtMs;
-      hiddenAtMs = null;
-      if (gap >= RESUME_THRESHOLD_MS) { endSession(); startSession('resume'); }
-    }
-  });
 }
 
 // ============================================================
@@ -1890,8 +1741,6 @@ function placePieceAt(slot, gx, gy, slotIdx) {
     scoreDelta += lineScore + comboBonus;
     state.combo += 1;
     state.comboTimer = 1500;
-    state.linesClearedThisGame = (state.linesClearedThisGame || 0) + totalLines;
-    if (state.combo > (state.maxComboThisGame || 0)) state.maxComboThisGame = state.combo;
     if (state.combo >= 2 || totalLines >= 2) {
       showComboFlash(state.combo, totalLines);
     }
@@ -2196,7 +2045,6 @@ function claimChest() {
   sfx('star');
   save();
   renderEarn();
-  track('chest_claim', { day, reward });
 }
 
 function missionState(id) {
@@ -2280,7 +2128,6 @@ function grantMissionReward(m) {
   sfx('star');
   save();
   renderEarn();
-  track('mission_complete', { mission_id: m.id, reward: m.reward, mission_type: m.type });
 }
 
 function renderEarn() {
@@ -2377,7 +2224,6 @@ document.getElementById('btn-settings').addEventListener('click', () => { openMo
 
 function switchTab(name) {
   if (state.activeTab === name) return;
-  const from = state.activeTab;
   state.activeTab = name;
   for (const v of document.querySelectorAll('.tab-view')) v.classList.remove('active');
   const view = document.getElementById('view-' + name);
@@ -2393,7 +2239,6 @@ function switchTab(name) {
     setTimeout(fitCanvas, 30);
   }
   save();
-  track('tab_switch', { from, to: name });
 }
 
 // Public so other code paths (e.g. "🎁 Daily chest ready!" toast) can switch.
@@ -2445,10 +2290,8 @@ function populateLangSelect() {
     sel.appendChild(opt);
   }
   sel.addEventListener('change', () => {
-    const from = state.settings.lang;
     state.settings.lang = sel.value;
-    applyI18n(); renderShop(); renderEarn(); save();
-    track('lang_change', { from, to: sel.value });
+    applyI18n(); renderShop(); save();
   });
 }
 
@@ -2457,11 +2300,9 @@ function populateLangSelect() {
 // ============================================================
 
 async function buySku(skuId) {
-  if (!state.iapEnabled) { toast(t('iapDisabled')); track('iap_unavailable', { sku: skuId }); return; }
+  if (!state.iapEnabled) { toast(t('iapDisabled')); return; }
   const initData = TG.initData();
   if (!initData) { toast(t('iapDisabled')); return; }
-  const sku = SKUS[skuId] || {};
-  track('iap_attempt', { sku: skuId, stars: sku.price || 0 });
   try {
     const r = await fetch('/api/create-invoice', {
       method: 'POST',
@@ -2469,14 +2310,9 @@ async function buySku(skuId) {
       body: JSON.stringify({ sku: skuId, initData }),
     });
     const data = await r.json();
-    if (!r.ok || !data.link) {
-      toast(t('purchaseFailed'));
-      track('iap_invoice_failed', { sku: skuId, error: (data && data.error) || 'http_' + r.status });
-      return;
-    }
+    if (!r.ok || !data.link) { toast(t('purchaseFailed')); return; }
     TG.openInvoice(data.link, async (status) => {
       if (status === 'paid') {
-        track('iap_purchase', { sku: skuId, stars: sku.price || 0 });
         // Poll for grant
         for (let i = 0; i < 6; i++) {
           await new Promise(res => setTimeout(res, 700));
@@ -2498,18 +2334,11 @@ async function buySku(skuId) {
         }
         // Even if we didn't get the grant via poll, mark as purchased.
         toast(t('purchased'));
-      } else if (status === 'cancelled') {
-        track('iap_cancelled', { sku: skuId, stars: sku.price || 0 });
-        toast(t('purchaseFailed'));
-      } else if (status === 'failed') {
-        track('iap_failed', { sku: skuId, stars: sku.price || 0 });
+      } else if (status === 'cancelled' || status === 'failed') {
         toast(t('purchaseFailed'));
       }
     });
-  } catch (e) {
-    track('iap_error', { sku: skuId, error: String(e && e.message || e) });
-    toast(t('purchaseFailed'));
-  }
+  } catch (e) { toast(t('purchaseFailed')); }
 }
 
 function applyGrant(grant) {
@@ -2525,14 +2354,13 @@ function applyGrant(grant) {
 function tryRevive() {
   if (state.revives > 0) {
     state.revives -= 1;
-    doRevive('free');
+    doRevive();
     return;
   }
-  track('revive_buy_initiated', { score: state.score });
   buySku('revive');
   // After purchase, the poll loop will increment revives; player can re-tap revive.
 }
-function doRevive(source) {
+function doRevive() {
   // Refill tray, clear half the board (top half) to give breathing room.
   fillNewTray();
   for (let y = 0; y < Math.floor(GRID / 2); y++) {
@@ -2544,7 +2372,6 @@ function doRevive(source) {
   TG.haptic('success');
   closeAllModals();
   save();
-  track('revive', { source: source || 'unknown', score_at_revive: state.score });
 }
 
 // ============================================================
@@ -2669,13 +2496,9 @@ function newGame() {
   state.particles = [];
   state.gameOver = false;
   state.shake = 0;
-  state.gameStartedAt = Date.now();
-  state.maxComboThisGame = 0;
-  state.linesClearedThisGame = 0;
   fillNewTray();
   updateHud();
   save();
-  track('game_start', {});
 }
 
 function onGameOver() {
@@ -2690,14 +2513,6 @@ function onGameOver() {
     t('gameOverSub') + ' · ' + t('score') + ': ' + formatNum(state.score);
   openModal('modal-gameover');
   save();
-  track('game_over', {
-    score:           state.score,
-    is_new_best:     state.score >= state.best,
-    duration_sec:    state.gameStartedAt ? Math.round((Date.now() - state.gameStartedAt) / 1000) : 0,
-    max_combo:       state.maxComboThisGame || 0,
-    lines_cleared:   state.linesClearedThisGame || 0,
-    games_played_today: state.gamesPlayedToday,
-  });
 }
 
 // ============================================================
@@ -2726,7 +2541,6 @@ async function loadFlags() {
     const r = await fetch('/api/flags');
     const d = await r.json();
     state.iapEnabled = !!d.iap;
-    if (d.mixpanel_token) initMixpanel(d.mixpanel_token);
   } catch (e) {}
 }
 
