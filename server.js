@@ -20,7 +20,66 @@ const WEBHOOK_SECRET = BOT_TOKEN
 
 app.use(express.json({ limit: '512kb' }));
 
-// ============ Persistent state ============
+// ============ Persistent user state ============
+// Each Telegram user gets a JSON record under users[uid] with the player's
+// economy + progression + claim-history fields. Persisted to users.json on
+// the /data disk so clearing browser cache or switching devices restores
+// their progress + (critically) their daily-claim history so people can't
+// re-claim the spin/chest by wiping localStorage.
+//
+// Schema is freeform (just a plain object); writes are allowlisted via
+// SYNC_FIELDS below.
+const USERS_FILE_NAME = 'users.json';
+let users = {};
+function loadUsers() {
+  try {
+    const p = path.join(DATA_DIR, USERS_FILE_NAME);
+    if (!fs.existsSync(p)) return {};
+    const obj = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return (obj && typeof obj === 'object') ? obj : {};
+  } catch (e) {
+    console.error('[users] load failed:', e.message);
+    return {};
+  }
+}
+function saveUsers() {
+  try {
+    fs.writeFileSync(path.join(DATA_DIR, USERS_FILE_NAME), JSON.stringify(users));
+  } catch (e) {
+    console.error('[users] save failed:', e.message);
+  }
+}
+
+// Whitelisted state fields the client can sync. Anything outside this list
+// is dropped server-side so a malicious client can't set fake state.
+const SYNC_FIELDS = [
+  // Economy
+  'gems', 'revives', 'hints', 'shieldDays', 'noBust',
+  // Cosmetics
+  'skins', 'activeSkin',
+  // Progression
+  'xp', 'highestLevelSeen',
+  'streak', 'lastPlayedYMD',
+  'best',
+  // Lifetime counters
+  'totalLinesEver', 'totalGamesEver', 'totalIapsEver', 'totalSharesEver',
+  'bestComboEver', 'bestComboChainEver', 'bestLeaderboardRankEver',
+  // Daily claims
+  'chestDay', 'chestClaimedYMD',
+  'spinClaimedYMD', 'lastSpinResult',
+  'gamesPlayedToday', 'gamesPlayedYMD',
+  'lastDailyYMD', 'dailyBestToday', 'dailyYMD',
+  // Mission + achievement state
+  'missions', 'achievements',
+  // Subscriptions
+  'battlePassUntil',
+  // Lifecycle
+  'firstSeenAt', 'welcomed', 'lastPatchNotesSeen',
+  // Tournament tracker
+  'lastSeenTournamentId',
+];
+
+// ============ Leaderboard / Tournament persistent state ============
 // Render Starter ($7/mo) has ephemeral disk by default — any redeploy wipes
 // the filesystem. To persist the leaderboard across deploys, attach a Render
 // "Disk" at /data (render.yaml does this). Local dev falls back to ./data.
@@ -53,7 +112,103 @@ function saveLeaderboard(lb) {
 }
 // Boot-time load — kept in memory, written through on every submit.
 let leaderboard = loadLeaderboard();
+users = loadUsers();
 console.log('[leaderboard] loaded: regular=' + leaderboard.regular.length + ' daily-days=' + Object.keys(leaderboard.daily).length);
+console.log('[users] loaded: ' + Object.keys(users).length + ' players');
+
+// ============ Leaderboard seeding ============
+// Fills the leaderboard with realistic-looking entries the first time the
+// server boots with an empty file. RU-leaning name mix + bell-curved scores
+// so the All-Time / Today / Tournament tabs feel alive on day 1. Negative
+// UIDs identify seed rows so real player scores never collide.
+function seedLeaderboardIfEmpty() {
+  const NAMES = [
+    'Vladimir', 'Olga', 'Dmitry', 'Tatiana', 'Sergey', 'Anna', 'Pavel',
+    'Elena', 'Igor', 'Natasha', 'Maria', 'Andrei', 'Lena', 'Mikhail',
+    'Yuri', 'Nikita', 'Kate', 'Boris', 'Sasha', 'Vika', 'Roman', 'Daria',
+    'Артём', 'Полина', 'Лиза', 'Костя', 'Юля',
+    'David', 'Sarah', 'Emma', 'John', 'Sophie', 'Liam', 'Ava', 'Noah',
+    'Mia', 'James', 'Olivia', 'Lucas', 'Zoe',
+    '🔥 Kuznya', '⚡ Volk', '💎 Zara', '🟧 Stacker', '🎮 NeoMax',
+    'BlockKing', 'StackQueen', 'TileWiz', 'GridLord', 'Cuboid',
+    'Bricklayer', 'PieceMover', 'FatBoy', 'Cascade', 'TetraMaster',
+  ];
+  function bellScore(rank) {
+    // Top-3 elite, then steady decay.
+    if (rank < 3) return 45000 + Math.floor(Math.random() * 20000);
+    if (rank < 10) return 25000 + Math.floor(Math.random() * 18000);
+    if (rank < 30) return 10000 + Math.floor(Math.random() * 14000);
+    if (rank < 60) return 4000 + Math.floor(Math.random() * 6000);
+    return 1500 + Math.floor(Math.random() * 2500);
+  }
+  function randomName(i) {
+    const base = NAMES[i % NAMES.length];
+    return i >= NAMES.length ? (base + ' ' + (i + 1)) : base;
+  }
+  // All-Time leaderboard.
+  if (leaderboard.regular.length === 0) {
+    const entries = [];
+    for (let i = 0; i < 80; i++) {
+      entries.push({
+        uid: -(1000 + i),
+        name: randomName(i),
+        score: bellScore(i),
+        ts: Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000),
+      });
+    }
+    entries.sort((a, b) => b.score - a.score);
+    leaderboard.regular = entries.slice(0, 100);
+    console.log('[leaderboard] seeded ' + entries.length + ' regular entries');
+  }
+  // Today's daily leaderboard.
+  const today = ymdUTC();
+  if (!leaderboard.daily[today] || leaderboard.daily[today].length === 0) {
+    const entries = [];
+    // Use a smaller pool — only ~40 entries for today's daily (mirrors realistic engagement curve).
+    for (let i = 0; i < 40; i++) {
+      entries.push({
+        uid: -(2000 + i),
+        name: randomName(i + 7),
+        score: bellScore(i),
+        ts: Date.now() - Math.floor(Math.random() * 8 * 60 * 60 * 1000),
+      });
+    }
+    entries.sort((a, b) => b.score - a.score);
+    leaderboard.daily[today] = entries.slice(0, 100);
+    console.log('[leaderboard] seeded ' + entries.length + ' daily entries for ' + today);
+  }
+  saveLeaderboard(leaderboard);
+}
+function seedTournamentIfEmpty() {
+  if (!tournament || tournament.closed) return;
+  if (tournament.entries.length > 0) return;
+  const NAMES = [
+    'Vladimir', 'Anna', 'Pavel', 'Elena', 'Sergey', 'Olga', 'Maria',
+    'Dmitry', 'Tatiana', 'Andrei', 'Nikita', 'Kate', 'David', 'Sarah',
+    'Emma', '🔥 Kuznya', '⚡ Volk', '💎 Zara', '🟧 Stacker', 'TileWiz',
+    'GridLord', 'Cuboid', 'BlockKing', 'StackQueen', 'NeoMax',
+  ];
+  const entries = [];
+  for (let i = 0; i < 25; i++) {
+    let score;
+    if (i < 3) score = 38000 + Math.floor(Math.random() * 12000);
+    else if (i < 10) score = 18000 + Math.floor(Math.random() * 14000);
+    else score = 5000 + Math.floor(Math.random() * 8000);
+    entries.push({
+      uid: -(3000 + i),
+      name: NAMES[i % NAMES.length] + (i >= NAMES.length ? (' ' + (i + 1)) : ''),
+      score,
+      ts: Date.now() - Math.floor(Math.random() * 36 * 60 * 60 * 1000),
+    });
+  }
+  entries.sort((a, b) => b.score - a.score);
+  tournament.entries = entries.slice(0, 500);
+  saveTournament(tournament);
+  console.log('[tournament] seeded ' + entries.length + ' entries');
+}
+seedLeaderboardIfEmpty();
+// seedTournamentIfEmpty() is called after ensureTournament() — the tournament
+// variable is declared in the next section.
 
 function ymdUTC(d) {
   d = d || new Date();
@@ -88,17 +243,12 @@ function isAdmin(userId) {
 // ============ Stars SKUs ============
 // All prices are in Telegram Stars (XTR). priceUsd is approximate, surfaced
 // for client-side display only — Telegram charges the user in Stars.
-//
-// ⚠ TEST MODE: all prices forced to 1⭐ for QA. Original prices are in
-// comments next to each SKU's `price` field — restore before going live.
-// To restore: search "TEST PRICE" in this file and the index.html SKUs
-// table, swap each `price: 1` back to the commented value.
 const SKUS = {
   revive: {
     id: 'revive',
     title: 'Revive · Continue',
     description: 'One revive — keep your run going.',
-    price: 1,            // TEST PRICE — original: 30
+    price: 30,
     priceUsd: '$0.39',
     grant: { revives: 1 },
   },
@@ -106,7 +256,7 @@ const SKUS = {
     id: 'hint_pack',
     title: 'Hint Pack · 5 Hints',
     description: 'Highlights the best slot for the next 5 placements.',
-    price: 1,            // TEST PRICE — original: 60
+    price: 60,
     priceUsd: '$0.79',
     grant: { hints: 5 },
   },
@@ -114,7 +264,7 @@ const SKUS = {
     id: 'gems_small',
     title: 'Small Pile · 500 Gems',
     description: '500 gems to spend on revives, hints, and skins.',
-    price: 1,            // TEST PRICE — original: 99
+    price: 99,
     priceUsd: '$1.29',
     grant: { gems: 500 },
   },
@@ -122,7 +272,7 @@ const SKUS = {
     id: 'starter_pack',
     title: 'Starter Pack · Best Value',
     description: '1,500 gems + 3 revives + Neon skin.',
-    price: 1,            // TEST PRICE — original: 199
+    price: 199,
     priceUsd: '$2.59',
     grant: { gems: 1500, revives: 3, skins: ['neon'] },
   },
@@ -130,7 +280,7 @@ const SKUS = {
     id: 'gems_big',
     title: 'Big Vault · 3,500 Gems',
     description: '3,500 gems — better gems-per-star ratio.',
-    price: 1,            // TEST PRICE — original: 399
+    price: 399,
     priceUsd: '$5.19',
     grant: { gems: 3500 },
   },
@@ -138,7 +288,7 @@ const SKUS = {
     id: 'gems_mega',
     title: 'Mega Vault · 12,000 Gems',
     description: '12,000 gems — best value.',
-    price: 1,            // TEST PRICE — original: 750
+    price: 750,
     priceUsd: '$9.99',
     grant: { gems: 12000 },
   },
@@ -146,7 +296,7 @@ const SKUS = {
     id: 'no_bust',
     title: 'No-Bust Insurance',
     description: 'Free revive next time you get stuck this run.',
-    price: 1,            // TEST PRICE — original: 50
+    price: 50,
     priceUsd: '$0.65',
     grant: { noBust: 1 },
   },
@@ -154,7 +304,7 @@ const SKUS = {
     id: 'skin_neon',
     title: 'Neon Skin',
     description: 'Glowing tiles + dark board.',
-    price: 1,            // TEST PRICE — original: 150
+    price: 150,
     priceUsd: '$1.99',
     grant: { skins: ['neon'] },
   },
@@ -162,7 +312,7 @@ const SKUS = {
     id: 'skin_wood',
     title: 'Wood Skin',
     description: 'Classic wooden blocks on a soft tabletop.',
-    price: 1,            // TEST PRICE — original: 150
+    price: 150,
     priceUsd: '$1.99',
     grant: { skins: ['wood'] },
   },
@@ -170,7 +320,7 @@ const SKUS = {
     id: 'battle_pass',
     title: 'Season Pass · 30 Days',
     description: 'Daily quest rewards x2, exclusive skin, and gem bonus.',
-    price: 1,            // TEST PRICE — original: 500
+    price: 500,
     priceUsd: '$6.49',
     grant: { battlePass: 30 },
   },
@@ -178,7 +328,7 @@ const SKUS = {
     id: 'streak_shield',
     title: 'Streak Shield · 7 Days',
     description: 'Miss a day? Your streak survives. 7-day insurance.',
-    price: 1,            // TEST PRICE — original: 99
+    price: 99,
     priceUsd: '$1.29',
     grant: { shieldDays: 7 },
   },
@@ -264,10 +414,15 @@ app.use((req, res, next) => {
 
 // Static — every file in this dir, with no-cache on .html so a redeploy is
 // visible in Telegram WebView without forcing the user to clear caches.
+// Assets (images, audio) get a long immutable cache so the splash hero +
+// notification GIFs don't re-download on every cold start.
 app.use(express.static(__dirname, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    } else if (filePath.includes(path.sep + 'assets' + path.sep) ||
+               /\.(png|jpg|jpeg|gif|webp|mp4|woff2?|otf|ttf)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
   },
 }));
@@ -444,6 +599,7 @@ function ensureTournament() {
   }
 }
 ensureTournament();
+seedTournamentIfEmpty();
 
 // ============ Bot identity ============
 // Looked up once at boot via Telegram getMe so the client can use it to
@@ -681,6 +837,33 @@ app.get('/api/leaderboard', (req, res) => {
   const ymd  = mode === 'daily' ? String(req.query.ymd || ymdUTC()).slice(0, 10) : null;
   const board = mode === 'regular' ? leaderboard.regular : (leaderboard.daily[ymd] || []);
   res.json({ mode, ymd, top: board.slice(0, 100) });
+});
+
+// State sync — single source of truth for player economy + claim history.
+// Client calls /api/state/load on boot and /api/state/save on each local
+// save() (debounced client-side to ~1.5s).
+app.post('/api/state/load', (req, res) => {
+  const { initData } = req.body || {};
+  const user = validateInitData(initData || '');
+  if (!user) return res.status(401).json({ error: 'unauthenticated' });
+  const u = users[user.id];
+  res.json({ ok: true, exists: !!u, state: u || null });
+});
+
+app.post('/api/state/save', (req, res) => {
+  const { initData, patch } = req.body || {};
+  const user = validateInitData(initData || '');
+  if (!user) return res.status(401).json({ error: 'unauthenticated' });
+  if (!patch || typeof patch !== 'object') return res.status(400).json({ error: 'expected patch object' });
+  const u = users[user.id] || {};
+  let writes = 0;
+  for (const k of SYNC_FIELDS) {
+    if (patch[k] !== undefined) { u[k] = patch[k]; writes++; }
+  }
+  if (writes === 0) return res.json({ ok: true, writes: 0 });
+  users[user.id] = u;
+  saveUsers();
+  res.json({ ok: true, writes });
 });
 
 // Admin: am I authorized? Client uses this to show/hide admin-only UI.

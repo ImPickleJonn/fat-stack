@@ -5,10 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#FFF6E5">
 <title>Fat Stack</title>
-<!-- Preload the splash hero so it starts downloading in parallel with the
-     page parse, before any other asset. fetchpriority=high tells the
-     browser to prioritize over deferred resources. -->
-<link rel="preload" as="image" href="assets/splash.png" fetchpriority="high">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root {
@@ -942,7 +938,7 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 </head>
 <body>
 <div class="splash" id="splash">
-  <img class="splash-img" id="splash-img" src="assets/splash.png" alt="Fat Stack" decoding="async" fetchpriority="high" onerror="document.getElementById('splash').classList.add('no-image')">
+  <img class="splash-img" id="splash-img" src="assets/splash.png" alt="Fat Stack" onerror="document.getElementById('splash').classList.add('no-image')">
   <div class="splash-fallback">FAT STACK</div>
   <div class="splash-hint" id="splash-hint">&nbsp;</div>
   <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
@@ -997,13 +993,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       <button class="btn" style="width:auto; padding:8px 14px; margin:0; font-size:12px;" data-action="daily" data-i18n="play">Play</button>
     </div>
     <div class="shop-grid" id="shop-grid"></div>
-    <div class="divider"></div>
-    <div style="display:flex; justify-content:space-between; align-items:center; margin: 6px 0 4px;">
-      <h2 style="margin:0;" data-i18n="gemShopTitle">Gem Shop</h2>
-      <div class="gem-pill"><span class="g-icon">💎</span><span id="shop-gem-balance">0</span></div>
-    </div>
-    <p class="sub" data-i18n="gemShopSub">Spend earned gems on in-game items.</p>
-    <div class="shop-grid" id="gem-shop-grid"></div>
   </div>
 
   <!-- EARN view -->
@@ -1290,50 +1279,22 @@ const GRID = 8;
 const TRAY = 3;
 
 // Stars SKUs mirrored from server.js (display only — server is source of truth).
+// ⚠ TEST MODE: all prices forced to 1⭐ for QA. Original prices in comments
+// below — restore both this table AND the server.js SKUS const before launch.
 const SKUS = {
-  revive:       { id: 'revive',       price: 30,  emoji: '💖', tKey: 'skuRevive' },
-  hint_pack:    { id: 'hint_pack',    price: 60,  emoji: '💡', tKey: 'skuHintPack' },
-  gems_small:   { id: 'gems_small',   price: 99,  emoji: '💎', tKey: 'skuGemsSmall' },
-  starter_pack: { id: 'starter_pack', price: 199, emoji: '🎁', tKey: 'skuStarterPack' },
-  gems_big:     { id: 'gems_big',     price: 399, emoji: '💰', tKey: 'skuGemsBig' },
-  gems_mega:    { id: 'gems_mega',    price: 750, emoji: '🏆', tKey: 'skuGemsMega' },
-  no_bust:      { id: 'no_bust',      price: 50,  emoji: '🛡', tKey: 'skuNoBust' },
-  skin_neon:    { id: 'skin_neon',    price: 150, emoji: '🌈', tKey: 'skuSkinNeon' },
-  skin_wood:    { id: 'skin_wood',    price: 150, emoji: '🪵', tKey: 'skuSkinWood' },
-  battle_pass:  { id: 'battle_pass',  price: 500, emoji: '🎖', tKey: 'skuBattlePass' },
-  streak_shield:{ id: 'streak_shield',price: 99,  emoji: '🛟', tKey: 'skuStreakShield' },
-  test_purchase:{ id: 'test_purchase',price: 1,   emoji: '🧪', tKey: 'skuTestPurchase', adminOnly: true },
+  revive:       { id: 'revive',       price: 1, /* orig 30 */  emoji: '💖', tKey: 'skuRevive' },
+  hint_pack:    { id: 'hint_pack',    price: 1, /* orig 60 */  emoji: '💡', tKey: 'skuHintPack' },
+  gems_small:   { id: 'gems_small',   price: 1, /* orig 99 */  emoji: '💎', tKey: 'skuGemsSmall' },
+  starter_pack: { id: 'starter_pack', price: 1, /* orig 199 */ emoji: '🎁', tKey: 'skuStarterPack' },
+  gems_big:     { id: 'gems_big',     price: 1, /* orig 399 */ emoji: '💰', tKey: 'skuGemsBig' },
+  gems_mega:    { id: 'gems_mega',    price: 1, /* orig 750 */ emoji: '🏆', tKey: 'skuGemsMega' },
+  no_bust:      { id: 'no_bust',      price: 1, /* orig 50 */  emoji: '🛡', tKey: 'skuNoBust' },
+  skin_neon:    { id: 'skin_neon',    price: 1, /* orig 150 */ emoji: '🌈', tKey: 'skuSkinNeon' },
+  skin_wood:    { id: 'skin_wood',    price: 1, /* orig 150 */ emoji: '🪵', tKey: 'skuSkinWood' },
+  battle_pass:  { id: 'battle_pass',  price: 1, /* orig 500 */ emoji: '🎖', tKey: 'skuBattlePass' },
+  streak_shield:{ id: 'streak_shield',price: 1, /* orig 99 */  emoji: '🛟', tKey: 'skuStreakShield' },
+  test_purchase:{ id: 'test_purchase',price: 1,                emoji: '🧪', tKey: 'skuTestPurchase', adminOnly: true },
 };
-
-// Gem-currency items — bought with in-game 💎 instead of Stars. Same grants
-// as Stars SKUs but priced slightly worse per-unit so Stars stays the
-// "premium" lane (and gems remain meaningful to grind).
-// Ratio anchor: 99⭐ = 500 gems → 1⭐ ≈ 5 gems.
-const GEM_SHOP = [
-  { id: 'g_hint',   gems: 80,   emoji: '💡', tKey: 'gemHint',   grant: { hints: 1 } },
-  { id: 'g_revive', gems: 200,  emoji: '💖', tKey: 'gemRevive', grant: { revives: 1 } },
-  { id: 'g_noBust', gems: 350,  emoji: '🛡', tKey: 'gemNoBust', grant: { noBust: 1 } },
-  { id: 'g_shield', gems: 600,  emoji: '🛟', tKey: 'gemShield', grant: { shieldDays: 7 } },
-];
-
-// Synced fields (must match SYNC_FIELDS in server.js).
-const SYNC_FIELDS = [
-  'gems', 'revives', 'hints', 'shieldDays', 'noBust',
-  'skins', 'activeSkin',
-  'xp', 'highestLevelSeen',
-  'streak', 'lastPlayedYMD',
-  'best',
-  'totalLinesEver', 'totalGamesEver', 'totalIapsEver', 'totalSharesEver',
-  'bestComboEver', 'bestComboChainEver', 'bestLeaderboardRankEver',
-  'chestDay', 'chestClaimedYMD',
-  'spinClaimedYMD', 'lastSpinResult',
-  'gamesPlayedToday', 'gamesPlayedYMD',
-  'lastDailyYMD', 'dailyBestToday', 'dailyYMD',
-  'missions', 'achievements',
-  'battlePassUntil',
-  'firstSeenAt', 'welcomed', 'lastPatchNotesSeen',
-  'lastSeenTournamentId',
-];
 
 const SHOP_ORDER = ['starter_pack', 'revive', 'streak_shield', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass', 'test_purchase'];
 
@@ -1800,14 +1761,6 @@ const STRINGS = {
     stat_achs: 'Achievements',
     stat_rankBest: 'Best Rank',
     nowhereToStack: 'Nowhere to stack!',
-    welcomeBonus: '🎁 Welcome gift: +{n} 💎',
-    gemShopTitle: 'Gem Shop',
-    gemShopSub: 'Spend earned gems on in-game items.',
-    gemHint:   'Hint',
-    gemRevive: 'Revive',
-    gemNoBust: 'No-Bust',
-    gemShield: 'Shield · 7d',
-    notEnoughGems: 'Need {n} 💎',
     hintPool: [
       'Fill any row or column to clear it',
       'Chain clears in one placement = combo multiplier',
@@ -1976,14 +1929,6 @@ const STRINGS = {
     stat_achs: 'Достижений',
     stat_rankBest: 'Лучший ранг',
     nowhereToStack: 'Некуда складывать!',
-    welcomeBonus: '🎁 Приветственный подарок: +{n} 💎',
-    gemShopTitle: 'Магазин гемов',
-    gemShopSub: 'Трать заработанные гемы на предметы.',
-    gemHint:   'Подсказка',
-    gemRevive: 'Оживление',
-    gemNoBust: 'Страховка',
-    gemShield: 'Защита · 7д',
-    notEnoughGems: 'Нужно {n} 💎',
     hintPool: [
       'Заполни ряд или колонку — они исчезнут',
       'Цепочки очищений в одном ходе = множитель комбо',
@@ -3622,10 +3567,6 @@ function renderShop() {
     item.addEventListener('click', () => buySku(id));
     grid.appendChild(item);
   }
-  // Gem-currency section — render below the Stars grid, anchored by a
-  // divider + heading. Inserted into the view, not the grid, so it spans
-  // the full width.
-  renderGemShop();
   // Daily challenge status
   const ds = document.getElementById('daily-status');
   if (ds) {
@@ -4185,42 +4126,6 @@ function populateLangSelect() {
 // === 12. STARS IAP
 // ============================================================
 
-function renderGemShop() {
-  const grid = document.getElementById('gem-shop-grid');
-  const bal = document.getElementById('shop-gem-balance');
-  if (!grid) return;
-  if (bal) bal.textContent = formatNum(state.gems || 0);
-  grid.innerHTML = '';
-  for (const item of GEM_SHOP) {
-    const affordable = (state.gems || 0) >= item.gems;
-    const el = document.createElement('div');
-    el.className = 'shop-item' + (affordable ? '' : ' zero');
-    el.innerHTML =
-      '<div class="icon">' + item.emoji + '</div>' +
-      '<div class="name">' + t(item.tKey) + '</div>' +
-      '<div class="price" style="color:' + (affordable ? 'var(--accent-dark)' : 'var(--text-soft)') + ';">💎 ' + formatNum(item.gems) + '</div>';
-    el.addEventListener('click', () => buyWithGems(item));
-    grid.appendChild(el);
-  }
-}
-
-function buyWithGems(item) {
-  if ((state.gems || 0) < item.gems) {
-    toast(t('notEnoughGems', { n: item.gems }));
-    TG.haptic('warning');
-    return;
-  }
-  state.gems -= item.gems;
-  applyGrant(item.grant);
-  toast(t('purchased') + ' ' + item.emoji);
-  TG.haptic('success');
-  sfx('star');
-  save();
-  renderGemShop();
-  renderShop();
-  track('gem_shop_buy', { item: item.id, cost: item.gems });
-}
-
 function showShopLoader(show) {
   const el = document.getElementById('shop-loader');
   if (!el) return;
@@ -4483,10 +4388,6 @@ function save() {
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
   } catch (e) {}
-  // Mirror to server (debounced) so cache-clears / new devices restore the
-  // exact same state. Server is authoritative for the economy + claim
-  // history once a user has synced at least once.
-  syncStateToServer();
 }
 function load() {
   try {
@@ -5305,61 +5206,6 @@ async function loadFlags() {
   } catch (e) {}
 }
 
-// ============================================================
-// === SERVER STATE SYNC — persistent player record on the /data disk
-// ============================================================
-//
-// Boot:    loadStateFromServer() merges server-stored fields into local state.
-//          Adopts server state when it exists; falls back to localStorage-only
-//          for new users.
-// Save:    syncStateToServer() pushes the synced fields to /api/state/save,
-//          debounced ~1500ms so chained save() calls coalesce into one POST.
-async function loadStateFromServer() {
-  const initData = TG.initData();
-  if (!initData) return false;
-  try {
-    const r = await fetch('/api/state/load', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    });
-    const d = await r.json();
-    if (d && d.exists && d.state && typeof d.state === 'object') {
-      // Adopt server fields directly — server is authoritative for the
-      // economy + claim history. Local progress that hasn't pushed yet
-      // wins through the local-state branches above this (loaded from
-      // localStorage), but typically server state is fresher.
-      for (const k of SYNC_FIELDS) {
-        if (d.state[k] !== undefined) state[k] = d.state[k];
-      }
-      return true;
-    }
-  } catch (e) {}
-  return false;
-}
-let __syncSaveTimer = null;
-function syncStateToServer() {
-  // Debounce — save() is called by many code paths. Group into a single POST
-  // 1.5s after the last save.
-  if (__syncSaveTimer) clearTimeout(__syncSaveTimer);
-  __syncSaveTimer = setTimeout(async () => {
-    __syncSaveTimer = null;
-    const initData = TG.initData();
-    if (!initData) return;
-    const patch = {};
-    for (const k of SYNC_FIELDS) {
-      if (state[k] !== undefined) patch[k] = state[k];
-    }
-    try {
-      await fetch('/api/state/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ initData, patch }),
-      });
-    } catch (e) {}
-  }, 1500);
-}
-
 async function loadAdminStatus() {
   // Check whether the current Telegram user is an admin. Surfaces the
   // admin-only test_purchase SKU in the shop when true.
@@ -5447,34 +5293,15 @@ function boot() {
   heartbeat();
   pollPendingPrizes();
   refreshPowerHour();
-  // Pull server-side state — overrides localStorage if the user has played
-  // before on another device or after a cache wipe.
-  loadStateFromServer().then((adopted) => {
-    if (adopted) {
-      applySkin();
-      applyTheme();
-      renderSkinPicker();
-      updateHud();
-      updateXpBar();
-      updateInventoryPills();
-      if (state.activeTab === 'earn') renderEarn();
-      if (state.activeTab === 'shop') renderShop();
-    }
-  });
   // Initial achievement scan covers state restored from previous session
   // that may now satisfy a check (e.g., player owned a skin from a past
   // purchase but the achievement was added in this release).
   checkAchievements();
-  // First-ever-launch timestamp — drives Welcome Week. Also grants a
-  // starter gem balance so new players have agency from minute one
-  // (enough for 2 hints, 1 revive + 1 hint, or save for a no-bust).
+  // First-ever-launch timestamp — drives Welcome Week.
   if (!state.firstSeenAt) {
     state.firstSeenAt = Date.now();
-    const WELCOME_GEMS = 500;
-    state.gems = (state.gems || 0) + WELCOME_GEMS;
     save();
-    setTimeout(() => toast(t('welcomeBonus', { n: WELCOME_GEMS })), 3500);
-    track('first_seen', { welcome_gems: WELCOME_GEMS });
+    track('first_seen', {});
   }
   // Paint XP bar + show patch notes if version changed.
   updateXpBar();
