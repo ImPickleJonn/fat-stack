@@ -25,9 +25,18 @@ services:
     buildCommand: npm install
     startCommand: node server.js
     healthCheckPath: /api/flags
+    disk:
+      # Persistent disk for the leaderboard JSON. Without this, every
+      # redeploy wipes the leaderboard. 1GB is the minimum Render offers
+      # and is ~3 orders of magnitude more than we'll ever need.
+      name: fat-stack-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 20
+      - key: DATA_DIR
+        value: /data
       - key: PUBLIC_DOMAIN
         # Render auto-populates with the service's own .onrender.com hostname.
         # server.js reads this to build the Telegram webhook URL and the

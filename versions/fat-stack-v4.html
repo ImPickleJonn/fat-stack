@@ -455,19 +455,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
   display: flex; gap: 6px; padding: 0 12px 6px;
   flex-wrap: wrap;
 }
-.daily-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: linear-gradient(135deg, var(--accent), var(--gold));
-  color: var(--text); border-radius: 999px;
-  padding: 4px 11px; font-weight: 900; font-size: 12px;
-  box-shadow: 0 2px 0 var(--accent-dark);
-  animation: pulse 1500ms ease-in-out infinite;
-}
-.lb-tab.active {
-  background: var(--accent) !important;
-  color: white !important;
-  box-shadow: 0 4px 0 var(--accent-dark) !important;
-}
 .inv-pill {
   display: inline-flex; align-items: center; gap: 4px;
   background: var(--board-bg); border-radius: 999px;
@@ -543,7 +530,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
         </div>
       </div>
       <div class="icon-btns">
-        <div class="btn-icon" id="btn-leaderboard" title="Leaderboard">🏆</div>
         <div class="btn-icon" id="btn-settings" title="Settings">⚙</div>
       </div>
     </div>
@@ -667,28 +653,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       <a href="terms.html" target="_blank" data-i18n="terms">Terms</a>
     </p>
     <p class="small" id="version-line"></p>
-    <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-leaderboard">
-  <div class="modal" style="max-width:420px;">
-    <h2 data-i18n="leaderboard">Leaderboard</h2>
-    <div style="display:flex; gap:6px; margin-bottom:12px;">
-      <button class="btn secondary lb-tab active" data-lb-mode="regular" style="margin:0; flex:1; padding:10px;"><span data-i18n="lbAllTime">All-Time</span></button>
-      <button class="btn secondary lb-tab" data-lb-mode="daily" style="margin:0; flex:1; padding:10px;"><span data-i18n="lbToday">Today</span></button>
-    </div>
-    <div id="lb-list" style="max-height:50vh; overflow-y:auto;"></div>
-    <div id="lb-my-rank" style="text-align:center; margin:10px 0; font-weight:800; color:var(--accent-dark);"></div>
-    <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-daily-result">
-  <div class="modal">
-    <h2 data-i18n="dailyDoneTitle">Daily complete!</h2>
-    <p id="daily-result-text">—</p>
-    <button class="btn" data-action="lb-from-daily" data-i18n="seeLeaderboard">See leaderboard</button>
     <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
   </div>
 </div>
@@ -838,12 +802,6 @@ const state = {
   shake: 0,
   hintActive: null,              // { slotIdx, gx, gy, cells } — set by useHint
   hintExpiresAt: 0,
-  // Daily Mode (deterministic, server-seeded)
-  dailyMode: false,
-  dailySeed: 0,
-  dailyYMD: '',
-  dailyRng: null,                // mulberry32 instance; non-null = in daily mode
-  dailyBestToday: 0,             // tracks best score in today's daily across runs
 };
 
 function makeEmptyBoard() {
@@ -898,32 +856,10 @@ const SHAPES = [
   { cells: [[1,0],[0,1],[1,1],[0,2]],                         weight: 3 },
 ];
 
-// Mulberry32 — fast deterministic PRNG. Seeded once per daily run from the
-// server's /api/daily-seed payload so every player gets the SAME piece
-// queue + the SAME color queue on a given day. Same approach Match Icon
-// uses for PvP determinism.
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return function () {
-    a = (a + 0x6D2B79F5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-// gameRandom() routes through the seeded PRNG when in daily mode, else
-// Math.random. Place ALL gameplay-affecting random behind this — otherwise
-// the daily challenge desyncs from other players.
-function gameRandom() {
-  if (state.dailyRng) return state.dailyRng();
-  return Math.random();
-}
-
 function pickShape() {
   let total = 0;
   for (const s of SHAPES) total += s.weight;
-  let r = gameRandom() * total;
+  let r = Math.random() * total;
   for (const s of SHAPES) {
     r -= s.weight;
     if (r <= 0) return s;
@@ -997,17 +933,6 @@ const STRINGS = {
     resetTitle: 'Reset progress?',
     resetSub: 'All scores, streaks, gems, revives, hints, and purchases will be wiped. This cannot be undone.',
     resetConfirm: 'Yes, wipe it',
-    leaderboard: 'Leaderboard',
-    lbAllTime: 'All-Time', lbToday: 'Today',
-    lbEmpty: 'No scores yet — be first!',
-    loading: 'Loading…',
-    you: 'you',
-    youRank: 'You are #{n}',
-    notInTop100: 'Not in top 100 — play more!',
-    seeLeaderboard: 'See leaderboard',
-    dailyDoneTitle: 'Daily complete!',
-    dailyDoneText: 'You scored {score}. Today\'s board was the same for every player.',
-    dailyRankText: 'You scored {score} — rank #{rank} on today\'s leaderboard.',
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -1070,17 +995,6 @@ const STRINGS = {
     resetTitle: 'Сбросить прогресс?',
     resetSub: 'Все очки, серии, гемы, оживления, подсказки и покупки будут стёрты. Отменить нельзя.',
     resetConfirm: 'Да, стереть',
-    leaderboard: 'Таблица лидеров',
-    lbAllTime: 'За всё время', lbToday: 'Сегодня',
-    lbEmpty: 'Пока никого — стань первым!',
-    loading: 'Загрузка…',
-    you: 'ты',
-    youRank: 'Ты — #{n}',
-    notInTop100: 'Не в топ-100 — играй больше!',
-    seeLeaderboard: 'Открыть таблицу',
-    dailyDoneTitle: 'Ежедневный пройден!',
-    dailyDoneText: 'Ты набрал {score}. Сегодня у всех была одинаковая раскладка.',
-    dailyRankText: 'Ты набрал {score} — место #{rank} в сегодняшней таблице.',
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -1942,7 +1856,7 @@ function refillTrayIfEmpty() {
     for (let i = 0; i < TRAY; i++) {
       state.tray.push({
         shape: pickShape(),
-        colorIdx: Math.floor(gameRandom() * 6),
+        colorIdx: Math.floor(Math.random() * 6),
         used: false,
       });
     }
@@ -1953,7 +1867,7 @@ function fillNewTray() {
   for (let i = 0; i < TRAY; i++) {
     state.tray.push({
       shape: pickShape(),
-      colorIdx: Math.floor(gameRandom() * 6),
+      colorIdx: Math.floor(Math.random() * 6),
       used: false,
     });
   }
@@ -2450,27 +2364,20 @@ function updateHud() {
 function updateInventoryPills() {
   const row = document.getElementById('inv-row');
   if (!row) return;
-  row.innerHTML = '';
-  // Daily-mode badge takes priority — flashes first so players always know
-  // they're playing the seeded daily run.
-  if (state.dailyMode) {
-    const dailyEl = document.createElement('div');
-    dailyEl.className = 'daily-badge';
-    dailyEl.innerHTML = '🎯 <span>' + t('dailyTitle') + '</span>';
-    row.appendChild(dailyEl);
-  }
   const pills = [
     { id: 'gems',    icon: '💎', count: state.gems,    tappable: false },
     { id: 'revives', icon: '💖', count: state.revives, tappable: false },
     { id: 'hints',   icon: '💡', count: state.hints,   tappable: state.hints > 0, hot: state.hints > 0 && !state.hintActive, action: 'use-hint' },
     { id: 'no_bust', icon: '🛡', count: state.noBust,  tappable: false },
   ];
+  // Battle Pass — only show if active.
   if (state.battlePassUntil && state.battlePassUntil > Date.now()) {
     const days = Math.ceil((state.battlePassUntil - Date.now()) / (24 * 60 * 60 * 1000));
     pills.push({ id: 'bp', icon: '🎖', count: days + 'd', tappable: false });
   }
+  row.innerHTML = '';
   for (const p of pills) {
-    if (typeof p.count === 'number' && p.count === 0 && p.id !== 'hints') continue;
+    if (typeof p.count === 'number' && p.count === 0 && p.id !== 'hints') continue;   // hide zero counts (except hints which is the action button)
     const el = document.createElement('div');
     el.className = 'inv-pill'
       + (p.count === 0 ? ' zero' : '')
@@ -2710,9 +2617,9 @@ document.addEventListener('click', (e) => {
     closeAllModals();
   }
   else if (action === 'revive') { tryRevive(); }
-  else if (action === 'restart') { endDailyMode(); newGame(); closeAllModals(); switchTab('home'); }
+  else if (action === 'restart') { newGame(); closeAllModals(); switchTab('home'); }
   else if (action === 'share-score') { TG.shareUrl(); }
-  else if (action === 'daily') { closeAllModals(); switchTab('home'); startDaily(); }
+  else if (action === 'daily') { startDaily(); closeAllModals(); switchTab('home'); }
   else if (action === 'claim-chest') { claimChest(); }
   else if (action === 'mission-go') {
     const id = a.getAttribute('data-mid');
@@ -2729,7 +2636,6 @@ document.addEventListener('click', (e) => {
   else if (action === 'use-hint') { useHint(); }
   else if (action === 'reset-progress') { openModal('modal-confirm-reset'); }
   else if (action === 'reset-confirm') { resetProgress(); }
-  else if (action === 'lb-from-daily') { closeAllModals(); openLeaderboard('daily'); }
 });
 
 // Tab bar wiring
@@ -2737,15 +2643,6 @@ for (const btn of document.querySelectorAll('.tab-btn')) {
   btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
 }
 document.getElementById('btn-settings').addEventListener('click', () => { openModal('modal-settings'); });
-document.getElementById('btn-leaderboard').addEventListener('click', () => { openLeaderboard(state.dailyMode ? 'daily' : 'regular'); });
-
-// Leaderboard tab click handlers (delegated since they're in the modal)
-for (const b of document.querySelectorAll('.lb-tab')) {
-  b.addEventListener('click', () => {
-    const mode = b.getAttribute('data-lb-mode');
-    if (mode !== __lbActiveMode) openLeaderboard(mode);
-  });
-}
 
 function switchTab(name) {
   if (state.activeTab === name) return;
@@ -2995,8 +2892,6 @@ function save() {
       gamesPlayedToday: state.gamesPlayedToday,
       gamesPlayedYMD: state.gamesPlayedYMD,
       activeTab: state.activeTab,
-      dailyBestToday: state.dailyBestToday,
-      dailyYMD: state.dailyYMD,
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
   } catch (e) {}
@@ -3028,14 +2923,6 @@ function load() {
     if (typeof s.gamesPlayedToday === 'number') state.gamesPlayedToday = s.gamesPlayedToday;
     if (s.gamesPlayedYMD) state.gamesPlayedYMD = s.gamesPlayedYMD;
     if (s.activeTab) state.activeTab = s.activeTab;
-    // Daily best — reset if it's from a previous day.
-    if (s.dailyYMD === ymd() && typeof s.dailyBestToday === 'number') {
-      state.dailyBestToday = s.dailyBestToday;
-      state.dailyYMD = s.dailyYMD;
-    } else {
-      state.dailyBestToday = 0;
-      state.dailyYMD = '';
-    }
     return true;
   } catch (e) { return false; }
 }
@@ -3080,130 +2967,12 @@ function streakRiskAt() {
   return d.getTime();
 }
 
-async function startDaily() {
-  // Pull today's deterministic seed from the server. Same seed → same piece
-  // queue + same color sequence for every player playing today's daily.
-  let seed = null, dailyYMD = ymd();
-  try {
-    const r = await fetch('/api/daily-seed');
-    const d = await r.json();
-    if (d && typeof d.seed === 'number') { seed = d.seed; dailyYMD = d.ymd; }
-  } catch (e) {}
-  if (seed == null) {
-    // Offline fallback — seed locally from today's YMD (still deterministic
-    // per-device, but a player who's offline gets a different board than
-    // someone online for the same day).
-    let h = 2166136261;
-    for (let i = 0; i < dailyYMD.length; i++) {
-      h ^= dailyYMD.charCodeAt(i);
-      h = Math.imul(h, 16777619);
-    }
-    seed = h >>> 0;
-  }
-  state.dailyMode = true;
-  state.dailySeed = seed;
-  state.dailyYMD  = dailyYMD;
-  state.dailyRng  = mulberry32(seed);
+function startDaily() {
+  // For v0.1 the daily challenge is just a regular new game flagged as daily.
+  // Server-side seeded daily layouts come in a later iteration.
   newGame();
-  state.lastDailyYMD = dailyYMD;
+  state.lastDailyYMD = ymd();
   save();
-  track('daily_started', { ymd: dailyYMD, seed });
-}
-
-function endDailyMode() {
-  state.dailyMode = false;
-  state.dailySeed = 0;
-  state.dailyRng  = null;
-  // Keep dailyYMD so we know which day the last run belonged to.
-}
-
-// ============================================================
-// === LEADERBOARD
-// ============================================================
-let __lbActiveMode = 'regular';
-let __lbCache = { regular: null, daily: null };
-
-async function submitScore(score, mode) {
-  const initData = TG.initData();
-  if (!initData) return null;        // can't submit without auth
-  try {
-    const body = { initData, score, mode };
-    if (mode === 'daily') body.ymd = state.dailyYMD || ymd();
-    const r = await fetch('/api/score/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    const d = await r.json();
-    if (d && d.ok) {
-      __lbCache[mode] = { top: d.top, ts: Date.now() };
-      return d;
-    }
-  } catch (e) {}
-  return null;
-}
-
-async function fetchLeaderboard(mode) {
-  try {
-    const q = mode === 'daily' ? '?mode=daily' : '?mode=regular';
-    const r = await fetch('/api/leaderboard' + q);
-    const d = await r.json();
-    if (d && Array.isArray(d.top)) {
-      __lbCache[mode] = { top: d.top, ts: Date.now() };
-      return d.top;
-    }
-  } catch (e) {}
-  return [];
-}
-
-async function openLeaderboard(mode) {
-  __lbActiveMode = mode || 'regular';
-  // Sync the tab styling.
-  for (const b of document.querySelectorAll('.lb-tab')) {
-    b.classList.toggle('active', b.getAttribute('data-lb-mode') === __lbActiveMode);
-  }
-  openModal('modal-leaderboard');
-  document.getElementById('lb-list').innerHTML = '<p style="text-align:center;color:var(--text-soft);padding:20px;">' + t('loading') + '</p>';
-  document.getElementById('lb-my-rank').textContent = '';
-  const top = await fetchLeaderboard(__lbActiveMode);
-  renderLeaderboardList(top);
-}
-
-function renderLeaderboardList(top) {
-  const list = document.getElementById('lb-list');
-  if (!top || top.length === 0) {
-    list.innerHTML = '<p style="text-align:center;color:var(--text-soft);padding:20px;">' + t('lbEmpty') + '</p>';
-    document.getElementById('lb-my-rank').textContent = '';
-    return;
-  }
-  const myId = tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id;
-  let myRank = 0;
-  list.innerHTML = top.map((e, i) => {
-    const rank = i + 1;
-    const isMe = myId && e.uid === myId;
-    if (isMe) myRank = rank;
-    const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : ('#' + rank);
-    return (
-      '<div style="display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--shadow-soft);' +
-        (isMe ? 'background:var(--board-bg); border-radius:8px;' : '') + '">' +
-        '<div style="width:36px; text-align:center; font-weight:900; color:var(--text-soft);">' + medal + '</div>' +
-        '<div style="flex:1; font-weight:800;">' + escapeHtml(e.name) + (isMe ? ' <span style="color:var(--accent-dark);">(' + t('you') + ')</span>' : '') + '</div>' +
-        '<div style="font-weight:900; color:var(--accent-dark);">' + formatNum(e.score) + '</div>' +
-      '</div>'
-    );
-  }).join('');
-  const myEl = document.getElementById('lb-my-rank');
-  if (myRank > 0) {
-    myEl.textContent = t('youRank', { n: myRank });
-  } else if (top.length >= 100) {
-    myEl.textContent = t('notInTop100');
-  } else {
-    myEl.textContent = '';
-  }
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
 // ============================================================
@@ -3262,27 +3031,7 @@ function onGameOver() {
       '<div style="grid-column: span 2;"><b>' + t('duration') + ':</b> ' + mm + ':' + ss + '</div>' +
     '</div>' +
     (state.score >= state.best && state.best > 0 ? '<div style="color:var(--accent-dark);font-weight:900;">' + t('newBest') + '</div>' : '');
-  // Submit score to the leaderboard for the correct mode. Fire-and-forget;
-  // we surface the rank in the daily-result modal once it lands.
-  const wasDaily = !!state.dailyMode;
-  const dailyYMDAtGameOver = state.dailyYMD;
-  if (wasDaily) {
-    // Track best-daily-today locally so the player sees their own peak.
-    if (state.score > (state.dailyBestToday || 0)) state.dailyBestToday = state.score;
-  }
-  submitScore(state.score, wasDaily ? 'daily' : 'regular').then(resp => {
-    if (wasDaily) {
-      const rank = resp && resp.rank;
-      const txt = rank
-        ? t('dailyRankText', { score: formatNum(state.score), rank })
-        : t('dailyDoneText', { score: formatNum(state.score) });
-      document.getElementById('daily-result-text').textContent = txt;
-      closeAllModals();
-      openModal('modal-daily-result');
-    }
-  });
-  // Regular game-over modal still shows for non-daily runs.
-  if (!wasDaily) openModal('modal-gameover');
+  openModal('modal-gameover');
   save();
   track('game_over', {
     score:           state.score,
@@ -3291,8 +3040,6 @@ function onGameOver() {
     max_combo:       state.maxComboThisGame || 0,
     lines_cleared:   state.linesClearedThisGame || 0,
     games_played_today: state.gamesPlayedToday,
-    daily:           wasDaily,
-    daily_ymd:       wasDaily ? dailyYMDAtGameOver : null,
   });
 }
 

@@ -20,6 +20,60 @@ const WEBHOOK_SECRET = BOT_TOKEN
 
 app.use(express.json({ limit: '512kb' }));
 
+// ============ Persistent state ============
+// Render Starter ($7/mo) has ephemeral disk by default — any redeploy wipes
+// the filesystem. To persist the leaderboard across deploys, attach a Render
+// "Disk" at /data (render.yaml does this). Local dev falls back to ./data.
+// If the env var DATA_DIR isn't set, the local path keeps everything working
+// on dev without surprising the dev with /data/ permission errors.
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, 'data');
+try { if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
+const LEADERBOARD_FILE = path.join(DATA_DIR, 'leaderboard.json');
+
+function loadLeaderboard() {
+  try {
+    if (!fs.existsSync(LEADERBOARD_FILE)) return { regular: [], daily: {} };
+    const raw = fs.readFileSync(LEADERBOARD_FILE, 'utf8');
+    const obj = JSON.parse(raw);
+    return {
+      regular: Array.isArray(obj.regular) ? obj.regular : [],
+      daily:   (obj.daily && typeof obj.daily === 'object') ? obj.daily : {},
+    };
+  } catch (e) {
+    console.error('[leaderboard] load failed:', e.message);
+    return { regular: [], daily: {} };
+  }
+}
+function saveLeaderboard(lb) {
+  try {
+    fs.writeFileSync(LEADERBOARD_FILE, JSON.stringify(lb), 'utf8');
+  } catch (e) {
+    console.error('[leaderboard] save failed:', e.message);
+  }
+}
+// Boot-time load — kept in memory, written through on every submit.
+let leaderboard = loadLeaderboard();
+console.log('[leaderboard] loaded: regular=' + leaderboard.regular.length + ' daily-days=' + Object.keys(leaderboard.daily).length);
+
+function ymdUTC(d) {
+  d = d || new Date();
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+// Deterministic seed from a YMD string — every player on the same UTC day
+// gets the same seed → the same board layout + piece queue. Mulberry32 on
+// the client uses this exact int.
+function seedForYMD(ymd) {
+  let h = 2166136261;
+  for (let i = 0; i < ymd.length; i++) {
+    h ^= ymd.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
 // ============ Admin ============
 // Comma-separated Telegram user IDs with admin access. Env var overrides the
 // default. Default keeps Pickle (23040617) admin without needing to set the
@@ -279,6 +333,85 @@ app.post('/api/heartbeat', (req, res) => {
   res.json({ ok: true });
 });
 
+// Daily challenge — every player on the same UTC day gets the same seed,
+// which the client feeds into a Mulberry32 PRNG so the piece queue +
+// any other gameplay random is deterministic. Daily scores are submitted
+// to a separate leaderboard keyed on the YMD.
+app.get('/api/daily-seed', (req, res) => {
+  const ymd = ymdUTC();
+  const seed = seedForYMD(ymd);
+  res.json({ ymd, seed });
+});
+
+// Score submission — authenticates via Telegram initData, then drops the
+// score into the in-memory leaderboard and writes through to disk. Two
+// boards:
+//   - regular: top 100 ever, one entry per Telegram user (best score)
+//   - daily[YMD]: top 100 for that day's daily challenge, one per user
+app.post('/api/score/submit', (req, res) => {
+  const body = req.body || {};
+  const user = validateInitData(body.initData || '');
+  if (!user) return res.status(401).json({ error: 'unauthenticated' });
+  const score = Math.max(0, Math.min(99999999, parseInt(body.score, 10) || 0));
+  const mode = body.mode === 'daily' ? 'daily' : 'regular';
+  const ymd  = mode === 'daily' ? String(body.ymd || ymdUTC()).slice(0, 10) : null;
+  // Reject obviously-bogus daily submissions (wrong day).
+  if (mode === 'daily' && ymd !== ymdUTC()) {
+    return res.status(400).json({ error: 'wrong daily ymd' });
+  }
+  const entry = {
+    uid:  user.id,
+    name: (user.first_name || user.username || 'Player').slice(0, 24),
+    score,
+    ts:   Date.now(),
+  };
+  if (mode === 'regular') {
+    // Replace existing entry for this user if new score is higher.
+    const existing = leaderboard.regular.findIndex(e => e.uid === user.id);
+    if (existing >= 0) {
+      if (score > leaderboard.regular[existing].score) {
+        leaderboard.regular[existing] = entry;
+      }
+    } else {
+      leaderboard.regular.push(entry);
+    }
+    leaderboard.regular.sort((a, b) => b.score - a.score);
+    leaderboard.regular = leaderboard.regular.slice(0, 100);
+  } else {
+    if (!leaderboard.daily[ymd]) leaderboard.daily[ymd] = [];
+    const arr = leaderboard.daily[ymd];
+    const existing = arr.findIndex(e => e.uid === user.id);
+    if (existing >= 0) {
+      if (score > arr[existing].score) arr[existing] = entry;
+    } else {
+      arr.push(entry);
+    }
+    arr.sort((a, b) => b.score - a.score);
+    leaderboard.daily[ymd] = arr.slice(0, 100);
+    // Garbage-collect old daily boards (keep last 14 days).
+    const cutoff = ymdUTC(new Date(Date.now() - 14 * 24 * 60 * 60 * 1000));
+    for (const key of Object.keys(leaderboard.daily)) {
+      if (key < cutoff) delete leaderboard.daily[key];
+    }
+  }
+  saveLeaderboard(leaderboard);
+  // Find the submitter's rank for the response so the client can show "you
+  // are #N" without a second fetch.
+  const board = mode === 'regular' ? leaderboard.regular : (leaderboard.daily[ymd] || []);
+  const myRank = board.findIndex(e => e.uid === user.id) + 1;
+  res.json({ ok: true, rank: myRank || null, top: board.slice(0, 100) });
+});
+
+// Leaderboard fetch — public read, top 100 in the requested mode.
+//   GET /api/leaderboard?mode=regular
+//   GET /api/leaderboard?mode=daily&ymd=2026-05-19   (ymd defaults to today UTC)
+app.get('/api/leaderboard', (req, res) => {
+  const mode = req.query.mode === 'daily' ? 'daily' : 'regular';
+  const ymd  = mode === 'daily' ? String(req.query.ymd || ymdUTC()).slice(0, 10) : null;
+  const board = mode === 'regular' ? leaderboard.regular : (leaderboard.daily[ymd] || []);
+  res.json({ mode, ymd, top: board.slice(0, 100) });
+});
+
 // Admin: am I authorized? Client uses this to show/hide admin-only UI.
 app.post('/api/admin/whoami', (req, res) => {
   const user = validateInitData((req.body && req.body.initData) || '');
@@ -325,46 +458,101 @@ app.post('/api/telegram-webhook', async (req, res) => {
       const m = update.message;
       const lang = (m.from && m.from.language_code) || 'en';
       rememberUser(m.from.id, { chatId: m.chat.id, lang, lastActiveAt: Date.now() });
-      const playUrl = buildPlayUrl();
       const first = (m.from && (m.from.first_name || m.from.username)) || 'there';
-      const isRu = lang.startsWith('ru');
-      const welcomeText = isRu
-        ? `Привет, ${first}! 🟧\n\n` +
-          `*Fat Stack* — складывай блоки, собирай линии, бей рекорды.\n\n` +
-          `🎯 *Как играть*\n` +
-          `• Перетаскивай 3 фигуры на поле 8×8\n` +
-          `• Заполняй ряды и колонки целиком — они исчезают\n` +
-          `• Делай комбо подряд → больше очков\n` +
-          `• Ежедневный челлендж и недельный турнир\n\n` +
-          `Жми *PLAY* ниже. 🚀`
-        : `Hey ${first}! 🟧\n\n` +
-          `*Fat Stack* — drop blocks, clear lines, smash high scores.\n\n` +
-          `🎯 *How to play*\n` +
-          `• Drag the 3 pieces onto an 8×8 grid\n` +
-          `• Fill any row or column to clear it\n` +
-          `• Chain clears = combo multiplier\n` +
-          `• Daily challenge + weekly tournament\n\n` +
-          `Tap *PLAY* below to start. 🚀`;
-      try {
-        await fetch(`${TELEGRAM_API}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: m.chat.id,
-            text: welcomeText,
-            parse_mode: 'Markdown',
-            reply_markup: {
-              inline_keyboard: [[
-                { text: isRu ? '🎮  И Г Р А Т Ь' : '🎮  P L A Y   F A T   S T A C K', web_app: { url: playUrl } },
-              ]],
-            },
-          }),
-        });
-      } catch (e) {}
+      await sendWelcome(m.chat.id, first, lang);
     }
   } catch (e) { /* don't let webhook errors crash the server */ }
   res.json({ ok: true });
 });
+
+// Send the /start welcome. Auto-detects an animation or photo in assets/ so
+// you can drop a `welcome.gif`/`welcome.mp4`/`welcome.png`/`welcome.jpg` next
+// to server.js and the message upgrades from text-only → photo → animation
+// without any code change. Photo/GIF caption supports the same Markdown text.
+async function sendWelcome(chatId, firstName, lang) {
+  if (!BOT_TOKEN) return;
+  const playUrl = buildPlayUrl();
+  const isRu = String(lang || '').startsWith('ru');
+  const text = isRu
+    ? `Привет, *${firstName}*! 🟧\n\n` +
+      `Добро пожаловать в *Fat Stack* — самую залипательную головоломку с блоками в Telegram.\n\n` +
+      `🎯 *Как играть*\n` +
+      `• Перетаскивай 3 фигуры на поле 8×8\n` +
+      `• Заполняй ряды и колонки целиком — они исчезают\n` +
+      `• Цепочки очищений = комбо-множитель 🔥\n\n` +
+      `🎁 *Что внутри*\n` +
+      `• Ежедневный сундук на 7 дней (до 500 💎)\n` +
+      `• Ежедневный челлендж с одним и тем же раскладом для всех\n` +
+      `• Глобальная таблица лидеров\n` +
+      `• 3 темы — Классика, Дерево, Неон\n\n` +
+      `💎 Покупки только за Telegram Stars. *Никакой рекламы.*\n\n` +
+      `Жми *PLAY* ниже 👇`
+    : `Hey *${firstName}*! 🟧\n\n` +
+      `Welcome to *Fat Stack* — the stickiest block puzzle on Telegram.\n\n` +
+      `🎯 *How to play*\n` +
+      `• Drag the 3 pieces onto the 8×8 grid\n` +
+      `• Fill any row or column — it clears\n` +
+      `• Chain clears = combo multiplier 🔥\n\n` +
+      `🎁 *What's inside*\n` +
+      `• 7-day daily login chest (up to 500 💎)\n` +
+      `• Daily challenge — same board for everyone, race the clock\n` +
+      `• Global leaderboard\n` +
+      `• 3 themes — Classic, Wood, Neon\n\n` +
+      `💎 Stars-only IAP. *No ads, ever.*\n\n` +
+      `Tap *PLAY* below 👇`;
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: isRu ? '🎮  И Г Р А Т Ь' : '🎮  P L A Y   F A T   S T A C K', web_app: { url: playUrl } },
+    ]],
+  };
+
+  // Asset auto-detect: prefer GIF/MP4 (animation) > PNG/JPG (photo) > text-only.
+  const assetsDir = path.join(__dirname, 'assets');
+  const gif = ['welcome.gif', 'welcome.mp4'].map(f => path.join(assetsDir, f)).find(p => fs.existsSync(p));
+  const photo = !gif && ['welcome.png', 'welcome.jpg', 'welcome.jpeg'].map(f => path.join(assetsDir, f)).find(p => fs.existsSync(p));
+  const baseDomain = process.env.PUBLIC_DOMAIN || process.env.RAILWAY_PUBLIC_DOMAIN;
+
+  if (gif && baseDomain) {
+    try {
+      const url = `${getPublicUrl()}/assets/${path.basename(gif)}`;
+      const r = await fetch(`${TELEGRAM_API}/sendAnimation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId, animation: url,
+          caption: text, parse_mode: 'Markdown',
+          reply_markup: replyMarkup,
+        }),
+      });
+      if ((await r.json()).ok) return;
+    } catch (e) { /* fall through */ }
+  }
+  if (photo && baseDomain) {
+    try {
+      const url = `${getPublicUrl()}/assets/${path.basename(photo)}`;
+      const r = await fetch(`${TELEGRAM_API}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId, photo: url,
+          caption: text, parse_mode: 'Markdown',
+          reply_markup: replyMarkup,
+        }),
+      });
+      if ((await r.json()).ok) return;
+    } catch (e) { /* fall through */ }
+  }
+  // Text-only fallback.
+  try {
+    await fetch(`${TELEGRAM_API}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId, text, parse_mode: 'Markdown', reply_markup: replyMarkup,
+      }),
+    });
+  } catch (e) {}
+}
 
 // Diagnostic — Telegram's view of our webhook registration.
 app.post('/api/webhook-info', async (req, res) => {
