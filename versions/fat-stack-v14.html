@@ -262,70 +262,6 @@ select {
   text-shadow: 0 0 24px var(--accent), 0 4px 0 var(--accent-dark);
   opacity: 0;
 }
-/* Splash screen — full-screen brand intro on app launch with rotating hints
-   and a 3-second progress bar. Tap-to-skip. Sits above everything until
-   it fades out. */
-.splash {
-  position: fixed; inset: 0; z-index: 9999;
-  background: linear-gradient(180deg, #1a3a6e 0%, #0e2452 100%);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  padding: 24px;
-  opacity: 1;
-  transition: opacity 400ms ease-out;
-  cursor: pointer;
-  overflow: hidden;
-}
-.splash.fade-out { opacity: 0; pointer-events: none; }
-.splash-fallback {
-  display: none;        /* shown only if the image fails to load */
-  font-size: 64px; font-weight: 900;
-  color: #FFD166;
-  text-shadow: 0 0 30px rgba(255,209,102,0.6), 0 6px 0 #B8232F;
-  letter-spacing: 2px;
-  text-align: center;
-  line-height: 1;
-}
-.splash.no-image .splash-fallback { display: block; }
-.splash.no-image .splash-img { display: none; }
-.splash-img {
-  max-width: 88%; max-height: 64vh;
-  object-fit: contain;
-  filter: drop-shadow(0 8px 24px rgba(0,0,0,0.4));
-  animation: splashFloat 2400ms ease-in-out infinite alternate;
-}
-@keyframes splashFloat {
-  from { transform: translateY(-4px); }
-  to   { transform: translateY( 4px); }
-}
-.splash-hint {
-  margin-top: 20px;
-  font-size: 14px; font-weight: 700;
-  color: rgba(255,255,255,0.92);
-  text-align: center;
-  min-height: 44px;
-  padding: 0 16px;
-  max-width: 92vw;
-  line-height: 1.35;
-  text-shadow: 0 2px 6px rgba(0,0,0,0.4);
-}
-.splash-bar {
-  margin-top: 14px;
-  width: 84%; max-width: 280px;
-  height: 8px;
-  background: rgba(255,255,255,0.15);
-  border-radius: 999px;
-  overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
-}
-.splash-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #FFD166, #FF6B35);
-  width: 0%;
-  border-radius: 999px;
-  box-shadow: 0 0 10px rgba(255,107,53,0.6);
-}
-
 .loss-banner {
   position: fixed; left: 50%; top: 38%;
   transform: translate(-50%, -50%);
@@ -937,13 +873,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 </style>
 </head>
 <body>
-<div class="splash" id="splash">
-  <img class="splash-img" id="splash-img" src="assets/splash.png" alt="Fat Stack" onerror="document.getElementById('splash').classList.add('no-image')">
-  <div class="splash-fallback">FAT STACK</div>
-  <div class="splash-hint" id="splash-hint">&nbsp;</div>
-  <div class="splash-bar"><div class="splash-bar-fill" id="splash-bar-fill"></div></div>
-</div>
-
 <div id="app">
   <!-- HOME view -->
   <div class="tab-view active" id="view-home">
@@ -1761,23 +1690,6 @@ const STRINGS = {
     stat_achs: 'Achievements',
     stat_rankBest: 'Best Rank',
     nowhereToStack: 'Nowhere to stack!',
-    hintPool: [
-      'Fill any row or column to clear it',
-      'Chain clears in one placement = combo multiplier',
-      'Tap the 💡 hint pill if you get stuck',
-      'Daily Challenge — same board for every player',
-      '⚡ Power Hour at 18:00 UTC — all rewards 2×',
-      'Welcome Week — first 7 days get 2× rewards',
-      '🛟 Streak Shield saves your streak on missed days',
-      '🛡 No-Bust auto-revives you on game over',
-      'Bigger pieces score more points — use them',
-      'Weekly Tournament: top 10 win up to 1,500 💎',
-      'Buy revives in Shop or earn them from spins',
-      '🎁 Daily chest grows every day for 7 days',
-      'Open the 👤 profile to see your level & stats',
-      'Achievements give you free gems — check the Earn tab',
-      'Share your score — your friends become rivals',
-    ],
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -1929,23 +1841,6 @@ const STRINGS = {
     stat_achs: 'Достижений',
     stat_rankBest: 'Лучший ранг',
     nowhereToStack: 'Некуда складывать!',
-    hintPool: [
-      'Заполни ряд или колонку — они исчезнут',
-      'Цепочки очищений в одном ходе = множитель комбо',
-      'Нажми 💡 в HUD, если застрял',
-      'Ежедневный челлендж — одно поле для всех',
-      '⚡ Час Силы в 18:00 UTC — все награды × 2',
-      'Неделя новичка — первые 7 дней награды × 2',
-      '🛟 Защита серии спасёт серию в пропущенный день',
-      '🛡 Страховка автоматически оживляет тебя',
-      'Большие фигуры приносят больше очков',
-      'Недельный турнир: топ-10 берут до 1 500 💎',
-      'Покупай оживления в магазине или выбивай на спинах',
-      '🎁 Сундук растёт каждый день в течение 7 дней',
-      'Открой 👤 профиль чтобы увидеть уровень и статы',
-      'Достижения дают бесплатные гемы — смотри во вкладке Награды',
-      'Поделись счётом — друзья станут соперниками',
-    ],
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -5230,39 +5125,6 @@ async function loadAdminStatus() {
 // === 16. BOOT
 // ============================================================
 
-// ============================================================
-// === SPLASH — 3-second branded intro with rotating hints
-// ============================================================
-function showSplash(onDone) {
-  const el = document.getElementById('splash');
-  if (!el) { onDone && onDone(); return; }
-  const hintEl = document.getElementById('splash-hint');
-  const barEl = document.getElementById('splash-bar-fill');
-  // Pick a random hint from the user's chosen language.
-  const pool = (STRINGS[state.settings.lang] && STRINGS[state.settings.lang].hintPool) || STRINGS.en.hintPool;
-  const hint = pool[Math.floor(Math.random() * pool.length)];
-  if (hintEl) hintEl.textContent = hint;
-  // Animate progress bar 0 → 100% over 3 seconds.
-  const DURATION = 3000;
-  const startTs = Date.now();
-  let done = false;
-  function finish() {
-    if (done) return; done = true;
-    el.classList.add('fade-out');
-    el.removeEventListener('click', finish);
-    setTimeout(() => { try { el.remove(); } catch (e) {} onDone && onDone(); }, 420);
-  }
-  el.addEventListener('click', finish);   // tap-to-skip
-  function tickBar() {
-    if (done) return;
-    const t = Math.min(1, (Date.now() - startTs) / DURATION);
-    barEl.style.width = (t * 100).toFixed(1) + '%';
-    if (t < 1) requestAnimationFrame(tickBar);
-    else finish();
-  }
-  requestAnimationFrame(tickBar);
-}
-
 function boot() {
   load();
   if (!state.settings.lang || !STRINGS[state.settings.lang]) {
@@ -5307,12 +5169,7 @@ function boot() {
   updateXpBar();
   setTimeout(maybeShowPatchNotes, 800);   // delay so it doesn't fight the welcome modal
   setInterval(heartbeat, 60 * 1000);
-  // Splash plays for ~3s, then we surface the first-time welcome modal (if
-  // applicable). Splash is dismissible via tap so impatient returning
-  // players don't have to wait.
-  showSplash(() => {
-    if (!state.welcomed) openModal('modal-welcome');
-  });
+  if (!state.welcomed) openModal('modal-welcome');
   // Chest-ready nudge — fires once per session if today's chest is unclaimed.
   if (chestClaimableToday()) {
     setTimeout(() => toast(t('chestReady')), 1200);
