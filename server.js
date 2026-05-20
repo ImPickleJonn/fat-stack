@@ -88,12 +88,17 @@ function isAdmin(userId) {
 // ============ Stars SKUs ============
 // All prices are in Telegram Stars (XTR). priceUsd is approximate, surfaced
 // for client-side display only — Telegram charges the user in Stars.
+//
+// ⚠ TEST MODE: all prices forced to 1⭐ for QA. Original prices are in
+// comments next to each SKU's `price` field — restore before going live.
+// To restore: search "TEST PRICE" in this file and the index.html SKUs
+// table, swap each `price: 1` back to the commented value.
 const SKUS = {
   revive: {
     id: 'revive',
     title: 'Revive · Continue',
     description: 'One revive — keep your run going.',
-    price: 30,
+    price: 1,            // TEST PRICE — original: 30
     priceUsd: '$0.39',
     grant: { revives: 1 },
   },
@@ -101,7 +106,7 @@ const SKUS = {
     id: 'hint_pack',
     title: 'Hint Pack · 5 Hints',
     description: 'Highlights the best slot for the next 5 placements.',
-    price: 60,
+    price: 1,            // TEST PRICE — original: 60
     priceUsd: '$0.79',
     grant: { hints: 5 },
   },
@@ -109,7 +114,7 @@ const SKUS = {
     id: 'gems_small',
     title: 'Small Pile · 500 Gems',
     description: '500 gems to spend on revives, hints, and skins.',
-    price: 99,
+    price: 1,            // TEST PRICE — original: 99
     priceUsd: '$1.29',
     grant: { gems: 500 },
   },
@@ -117,7 +122,7 @@ const SKUS = {
     id: 'starter_pack',
     title: 'Starter Pack · Best Value',
     description: '1,500 gems + 3 revives + Neon skin.',
-    price: 199,
+    price: 1,            // TEST PRICE — original: 199
     priceUsd: '$2.59',
     grant: { gems: 1500, revives: 3, skins: ['neon'] },
   },
@@ -125,7 +130,7 @@ const SKUS = {
     id: 'gems_big',
     title: 'Big Vault · 3,500 Gems',
     description: '3,500 gems — better gems-per-star ratio.',
-    price: 399,
+    price: 1,            // TEST PRICE — original: 399
     priceUsd: '$5.19',
     grant: { gems: 3500 },
   },
@@ -133,7 +138,7 @@ const SKUS = {
     id: 'gems_mega',
     title: 'Mega Vault · 12,000 Gems',
     description: '12,000 gems — best value.',
-    price: 750,
+    price: 1,            // TEST PRICE — original: 750
     priceUsd: '$9.99',
     grant: { gems: 12000 },
   },
@@ -141,7 +146,7 @@ const SKUS = {
     id: 'no_bust',
     title: 'No-Bust Insurance',
     description: 'Free revive next time you get stuck this run.',
-    price: 50,
+    price: 1,            // TEST PRICE — original: 50
     priceUsd: '$0.65',
     grant: { noBust: 1 },
   },
@@ -149,7 +154,7 @@ const SKUS = {
     id: 'skin_neon',
     title: 'Neon Skin',
     description: 'Glowing tiles + dark board.',
-    price: 150,
+    price: 1,            // TEST PRICE — original: 150
     priceUsd: '$1.99',
     grant: { skins: ['neon'] },
   },
@@ -157,7 +162,7 @@ const SKUS = {
     id: 'skin_wood',
     title: 'Wood Skin',
     description: 'Classic wooden blocks on a soft tabletop.',
-    price: 150,
+    price: 1,            // TEST PRICE — original: 150
     priceUsd: '$1.99',
     grant: { skins: ['wood'] },
   },
@@ -165,7 +170,7 @@ const SKUS = {
     id: 'battle_pass',
     title: 'Season Pass · 30 Days',
     description: 'Daily quest rewards x2, exclusive skin, and gem bonus.',
-    price: 500,
+    price: 1,            // TEST PRICE — original: 500
     priceUsd: '$6.49',
     grant: { battlePass: 30 },
   },
@@ -173,7 +178,7 @@ const SKUS = {
     id: 'streak_shield',
     title: 'Streak Shield · 7 Days',
     description: 'Miss a day? Your streak survives. 7-day insurance.',
-    price: 99,
+    price: 1,            // TEST PRICE — original: 99
     priceUsd: '$1.29',
     grant: { shieldDays: 7 },
   },
@@ -763,6 +768,90 @@ async function sendWelcome(chatId, firstName, lang) {
     });
   } catch (e) {}
 }
+
+// Public diagnostic — anyone can hit this to see why IAP isn't working.
+// Reveals nothing sensitive (no token, no user data). Open in browser:
+//   https://<your-deploy>/api/diag
+app.get('/api/diag', async (req, res) => {
+  const out = {
+    version: 'v0.2.0',
+    bot_token_configured: !!BOT_TOKEN,
+    bot_username: BOT_USERNAME || null,
+    public_url: getPublicUrl() || null,
+    data_dir: DATA_DIR,
+    data_dir_writable: false,
+    data_dir_files: [],
+    leaderboard_entries: leaderboard.regular.length,
+    tournament: tournament ? {
+      id: tournament.id,
+      starts_at: tournament.starts_at,
+      ends_at: tournament.ends_at,
+      entries: (tournament.entries || []).length,
+      closed: !!tournament.closed,
+    } : null,
+    user_state_count: userState.size,
+    pending_purchase_users: pendingByUser.size,
+    uptime_sec: Math.round(process.uptime()),
+    webhook: null,
+    iap_create_invoice_test: null,
+  };
+  // Disk writability — quick probe so we know if /data is mounted.
+  try {
+    const probe = path.join(DATA_DIR, '.diag-probe');
+    fs.writeFileSync(probe, String(Date.now()));
+    fs.unlinkSync(probe);
+    out.data_dir_writable = true;
+    out.data_dir_files = fs.readdirSync(DATA_DIR).slice(0, 20);
+  } catch (e) {
+    out.data_dir_error = String(e && e.message || e);
+  }
+  // Telegram's view of our webhook — single most important field for IAP debugging.
+  if (BOT_TOKEN) {
+    try {
+      const r = await fetch(`${TELEGRAM_API}/getWebhookInfo`);
+      const d = await r.json();
+      if (d && d.ok && d.result) {
+        out.webhook = {
+          url: d.result.url || '',
+          has_custom_certificate: d.result.has_custom_certificate,
+          pending_update_count: d.result.pending_update_count,
+          last_error_date: d.result.last_error_date,
+          last_error_message: d.result.last_error_message,
+          last_synchronization_error_date: d.result.last_synchronization_error_date,
+          max_connections: d.result.max_connections,
+          allowed_updates: d.result.allowed_updates,
+        };
+      } else {
+        out.webhook = { error: d && d.description };
+      }
+    } catch (e) {
+      out.webhook = { error: String(e && e.message || e) };
+    }
+    // Dry-run createInvoiceLink against Telegram to confirm BOT_TOKEN works.
+    // Uses a throwaway payload, doesn't store anything.
+    try {
+      const r = await fetch(`${TELEGRAM_API}/createInvoiceLink`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: 'Diag Test',
+          description: 'Testing invoice creation only',
+          payload: JSON.stringify({ diag: true, ts: Date.now() }),
+          provider_token: '',
+          currency: 'XTR',
+          prices: [{ label: 'Diag', amount: 1 }],
+        }),
+      });
+      const d = await r.json();
+      out.iap_create_invoice_test = d && d.ok
+        ? { ok: true, link_prefix: String(d.result || '').slice(0, 40) + '…' }
+        : { ok: false, error: d && d.description };
+    } catch (e) {
+      out.iap_create_invoice_test = { ok: false, error: String(e && e.message || e) };
+    }
+  }
+  res.json(out);
+});
 
 // Diagnostic — Telegram's view of our webhook registration.
 app.post('/api/webhook-info', async (req, res) => {

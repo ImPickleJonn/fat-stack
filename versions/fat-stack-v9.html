@@ -979,21 +979,19 @@ const GRID = 8;
 const TRAY = 3;
 
 // Stars SKUs mirrored from server.js (display only — server is source of truth).
-// ⚠ TEST MODE: all prices forced to 1⭐ for QA. Original prices in comments
-// below — restore both this table AND the server.js SKUS const before launch.
 const SKUS = {
-  revive:       { id: 'revive',       price: 1, /* orig 30 */  emoji: '💖', tKey: 'skuRevive' },
-  hint_pack:    { id: 'hint_pack',    price: 1, /* orig 60 */  emoji: '💡', tKey: 'skuHintPack' },
-  gems_small:   { id: 'gems_small',   price: 1, /* orig 99 */  emoji: '💎', tKey: 'skuGemsSmall' },
-  starter_pack: { id: 'starter_pack', price: 1, /* orig 199 */ emoji: '🎁', tKey: 'skuStarterPack' },
-  gems_big:     { id: 'gems_big',     price: 1, /* orig 399 */ emoji: '💰', tKey: 'skuGemsBig' },
-  gems_mega:    { id: 'gems_mega',    price: 1, /* orig 750 */ emoji: '🏆', tKey: 'skuGemsMega' },
-  no_bust:      { id: 'no_bust',      price: 1, /* orig 50 */  emoji: '🛡', tKey: 'skuNoBust' },
-  skin_neon:    { id: 'skin_neon',    price: 1, /* orig 150 */ emoji: '🌈', tKey: 'skuSkinNeon' },
-  skin_wood:    { id: 'skin_wood',    price: 1, /* orig 150 */ emoji: '🪵', tKey: 'skuSkinWood' },
-  battle_pass:  { id: 'battle_pass',  price: 1, /* orig 500 */ emoji: '🎖', tKey: 'skuBattlePass' },
-  streak_shield:{ id: 'streak_shield',price: 1, /* orig 99 */  emoji: '🛟', tKey: 'skuStreakShield' },
-  test_purchase:{ id: 'test_purchase',price: 1,                emoji: '🧪', tKey: 'skuTestPurchase', adminOnly: true },
+  revive:       { id: 'revive',       price: 30,  emoji: '💖', tKey: 'skuRevive' },
+  hint_pack:    { id: 'hint_pack',    price: 60,  emoji: '💡', tKey: 'skuHintPack' },
+  gems_small:   { id: 'gems_small',   price: 99,  emoji: '💎', tKey: 'skuGemsSmall' },
+  starter_pack: { id: 'starter_pack', price: 199, emoji: '🎁', tKey: 'skuStarterPack' },
+  gems_big:     { id: 'gems_big',     price: 399, emoji: '💰', tKey: 'skuGemsBig' },
+  gems_mega:    { id: 'gems_mega',    price: 750, emoji: '🏆', tKey: 'skuGemsMega' },
+  no_bust:      { id: 'no_bust',      price: 50,  emoji: '🛡', tKey: 'skuNoBust' },
+  skin_neon:    { id: 'skin_neon',    price: 150, emoji: '🌈', tKey: 'skuSkinNeon' },
+  skin_wood:    { id: 'skin_wood',    price: 150, emoji: '🪵', tKey: 'skuSkinWood' },
+  battle_pass:  { id: 'battle_pass',  price: 500, emoji: '🎖', tKey: 'skuBattlePass' },
+  streak_shield:{ id: 'streak_shield',price: 99,  emoji: '🛟', tKey: 'skuStreakShield' },
+  test_purchase:{ id: 'test_purchase',price: 1,   emoji: '🧪', tKey: 'skuTestPurchase', adminOnly: true },
 };
 
 const SHOP_ORDER = ['starter_pack', 'revive', 'streak_shield', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass', 'test_purchase'];
