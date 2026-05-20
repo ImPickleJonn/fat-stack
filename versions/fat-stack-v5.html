@@ -838,13 +838,6 @@ const state = {
   shake: 0,
   hintActive: null,              // { slotIdx, gx, gy, cells } — set by useHint
   hintExpiresAt: 0,
-  // Loss-demo animation (runs after game-over detected, before modal opens).
-  // { pieces:[{slotIdx, slot, gx, gy, cells, conflictCells}], currentIdx,
-  //   phase:'piece'|'flash', phaseStart, onDone }
-  lossDemo: null,
-  // Daily-result-modal payload populated when submitScore resolves so the
-  // loss-demo can keep running uninterrupted; the modal opens after the demo.
-  pendingDailyResult: null,
   // Daily Mode (deterministic, server-seeded)
   dailyMode: false,
   dailySeed: 0,
@@ -1833,60 +1826,6 @@ function drawBoard() {
       drawTile(ox + x * CELL, oy + y * CELL, CELL, v, scale, alpha);
     }
   }
-  // Loss-demo overlay — shows the current piece's "least-bad attempt" on
-  // the board with conflict cells (cells where the piece would overlap an
-  // existing tile) flashing bright red with white X marks. Makes losses
-  // feel earned: the player sees the piece try a spot and visibly fail.
-  if (state.lossDemo && state.lossDemo.phase === 'piece') {
-    const cur = state.lossDemo.pieces[state.lossDemo.currentIdx];
-    if (cur) {
-      const ageMs = Date.now() - state.lossDemo.phaseStart;
-      const pulse = 0.5 + 0.5 * Math.sin(ageMs / 60);
-      // Red ghost piece in the attempt position.
-      for (const [gx, gy] of cur.cells) {
-        if (gx < 0 || gx >= GRID || gy < 0 || gy >= GRID) continue;
-        const cx = ox + gx * CELL;
-        const cy = oy + gy * CELL;
-        ctx.save();
-        ctx.globalAlpha = 0.35 + 0.35 * pulse;
-        ctx.fillStyle = cssVar('--danger');
-        const inset = Math.max(2, CELL * 0.08);
-        drawRoundedRect(cx + inset, cy + inset, CELL - inset * 2, CELL - inset * 2, CELL * 0.16);
-        ctx.fill();
-        ctx.restore();
-      }
-      // White X over each conflict cell — these are the cells the piece
-      // would crash into. Pulse + thick lines so it reads at a glance.
-      for (const [gx, gy] of cur.conflictCells) {
-        const cx = ox + gx * CELL;
-        const cy = oy + gy * CELL;
-        ctx.save();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = Math.max(3, CELL * 0.08);
-        ctx.globalAlpha = 0.65 + 0.35 * pulse;
-        ctx.lineCap = 'round';
-        const pad = CELL * 0.28;
-        ctx.beginPath();
-        ctx.moveTo(cx + pad, cy + pad);
-        ctx.lineTo(cx + CELL - pad, cy + CELL - pad);
-        ctx.moveTo(cx + CELL - pad, cy + pad);
-        ctx.lineTo(cx + pad, cy + CELL - pad);
-        ctx.stroke();
-        ctx.restore();
-      }
-    }
-  }
-  // Final red-flash phase — full-board red overlay fading out, sells the
-  // "game over" beat right before the modal opens.
-  if (state.lossDemo && state.lossDemo.phase === 'flash') {
-    const ageMs = Date.now() - state.lossDemo.phaseStart;
-    const a = Math.max(0, 0.55 - ageMs / 900);
-    ctx.save();
-    ctx.fillStyle = cssVar('--danger');
-    ctx.globalAlpha = a;
-    ctx.fillRect(ox, oy, BOARD_PX, BOARD_PX);
-    ctx.restore();
-  }
   // Hint overlay — pulsing golden outline over the best placement.
   if (state.hintActive) {
     const pulse = 0.55 + 0.35 * Math.sin(Date.now() / 180);
@@ -1917,49 +1856,14 @@ function drawBoard() {
 
 function drawTray() {
   const slotW = CSS_W / TRAY;
-  // Loss-demo per-piece animation state (read each frame, applied below).
-  const lossCurIdx = (state.lossDemo && state.lossDemo.phase === 'piece')
-    ? state.lossDemo.pieces[state.lossDemo.currentIdx].slotIdx
-    : -1;
-  const lossAge = lossCurIdx >= 0 ? (Date.now() - state.lossDemo.phaseStart) : 0;
-  const lossPulse = lossCurIdx >= 0 ? (0.5 + 0.5 * Math.sin(lossAge / 60)) : 0;
   for (let i = 0; i < TRAY; i++) {
     const slot = state.tray[i];
     if (!slot || slot.used) continue;
     // Skip drawing the slot if it's being dragged from
     if (state.drag && state.drag.slotIdx === i) continue;
-    let cx = i * slotW + slotW / 2;
+    const cx = i * slotW + slotW / 2;
     const cy = TRAY_Y + TRAY_H / 2;
-    // Current loss-demo piece — shake + red glow + X overlay.
-    if (i === lossCurIdx) {
-      cx += Math.sin(lossAge / 28) * 4;  // jiggle
-      // Red halo behind the piece.
-      ctx.save();
-      ctx.globalAlpha = 0.35 + 0.4 * lossPulse;
-      ctx.fillStyle = cssVar('--danger');
-      ctx.beginPath();
-      ctx.arc(cx, cy, TRAY_CELL * 2.4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
     drawShape(cx, cy, slot.shape, slot.colorIdx, TRAY_CELL);
-    // X overlay on top of the loss-demo piece, drawn AFTER the piece so it's
-    // unmistakable as a "rejected" indicator.
-    if (i === lossCurIdx) {
-      ctx.save();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 5;
-      ctx.globalAlpha = 0.6 + 0.4 * lossPulse;
-      ctx.lineCap = 'round';
-      const r = TRAY_CELL * 1.5;
-      ctx.beginPath();
-      ctx.moveTo(cx - r, cy - r);
-      ctx.lineTo(cx + r, cy + r);
-      ctx.moveTo(cx + r, cy - r);
-      ctx.lineTo(cx - r, cy + r);
-      ctx.stroke();
-      ctx.restore();
-    }
   }
   // Draw the dragged shape last (on top)
   if (state.drag) {
@@ -2188,54 +2092,6 @@ function checkGameOver() {
   return true;
 }
 
-// Build the per-piece "least-bad attempt" used by the loss-demo animation.
-// For each unused tray piece, find the in-bounds position with the FEWEST
-// overlapping cells (every position has at least one overlap, otherwise the
-// piece would fit and we wouldn't be here). The animation shows that
-// attempt with conflict cells flashing red so the player sees WHY the run
-// ended — no surprises.
-function buildLossDemoAttempts() {
-  const pieces = [];
-  for (let i = 0; i < state.tray.length; i++) {
-    const slot = state.tray[i];
-    if (!slot || slot.used) continue;
-    const box = shapeBox(slot.shape);
-    let best = null;
-    for (let y = 0; y <= GRID - box.h; y++) {
-      for (let x = 0; x <= GRID - box.w; x++) {
-        let overlap = 0;
-        for (const [dx, dy] of slot.shape.cells) {
-          if (state.board[y + dy][x + dx] >= 0) overlap++;
-        }
-        if (overlap > 0 && (!best || overlap < best.overlap)) {
-          best = { gx: x, gy: y, overlap };
-        }
-      }
-    }
-    // Fallback for pieces too big to even fit the board's bounding box —
-    // anchor at (0,0) so the demo still has something to show.
-    if (!best) best = { gx: 0, gy: 0, overlap: 0 };
-    const cells = slot.shape.cells.map(([dx, dy]) => [best.gx + dx, best.gy + dy]);
-    const conflictCells = cells.filter(([x, y]) =>
-      x >= 0 && x < GRID && y >= 0 && y < GRID && state.board[y][x] >= 0
-    );
-    pieces.push({ slotIdx: i, slot, gx: best.gx, gy: best.gy, cells, conflictCells });
-  }
-  return pieces;
-}
-
-function startLossDemo(onDone) {
-  const pieces = buildLossDemoAttempts();
-  if (pieces.length === 0) { onDone && onDone(); return; }
-  state.lossDemo = {
-    pieces, currentIdx: 0,
-    phase: 'piece', phaseStart: Date.now(),
-    onDone: onDone || null,
-  };
-  sfx('invalid');
-  TG.haptic('warning');
-}
-
 // ============================================================
 // === 8. INPUT (touch + mouse)
 // ============================================================
@@ -2436,29 +2292,6 @@ function tick(now) {
     state.hintActive = null;
     state.hintExpiresAt = 0;
     updateInventoryPills();
-  }
-  // Loss-demo state machine. Each unused tray piece gets PIECE_MS of stage
-  // time showing its best-attempt + conflict overlay; then a brief full-
-  // board red flash; then onDone fires and showGameOverResult opens the modal.
-  if (state.lossDemo) {
-    const PIECE_MS = 750;
-    const FLASH_MS = 450;
-    const elapsed = now - state.lossDemo.phaseStart;
-    if (state.lossDemo.phase === 'piece' && elapsed >= PIECE_MS) {
-      state.lossDemo.currentIdx++;
-      state.lossDemo.phaseStart = now;
-      if (state.lossDemo.currentIdx >= state.lossDemo.pieces.length) {
-        state.lossDemo.phase = 'flash';
-        state.shake = 10;
-      } else {
-        sfx('invalid');
-        TG.haptic('warning');
-      }
-    } else if (state.lossDemo.phase === 'flash' && elapsed >= FLASH_MS) {
-      const onDone = state.lossDemo.onDone;
-      state.lossDemo = null;
-      if (onDone) onDone();
-    }
   }
   drawAll();
   drawMascot();
@@ -3396,8 +3229,8 @@ function newGame() {
 }
 
 function onGameOver() {
-  // No-Bust insurance — auto-consume BEFORE the loss-demo runs. The player
-  // bought peace of mind; skip straight to revive.
+  // No-Bust insurance — auto-consume before showing the modal. The player
+  // bought peace of mind; deliver it without making them tap.
   if (state.noBust > 0) {
     state.noBust -= 1;
     save();
@@ -3410,47 +3243,14 @@ function onGameOver() {
     return;
   }
   state.gameOver = true;
-  // Bookkeeping happens immediately (don't wait for the demo) so the streak,
-  // counters, mixpanel event, and persisted save survive a mid-demo close.
+  sfx('gameover');
+  TG.haptic('error');
   updateStreakOnPlay();
+  // Mission counter: only count a finished game (not revived) toward daily quests.
   rolloverDailyCountersIfNeeded();
   state.gamesPlayedToday += 1;
+  // Compose stats block for the game-over modal.
   const duration = state.gameStartedAt ? Math.round((Date.now() - state.gameStartedAt) / 1000) : 0;
-  const wasDaily = !!state.dailyMode;
-  const dailyYMDAtGameOver = state.dailyYMD;
-  if (wasDaily && state.score > (state.dailyBestToday || 0)) state.dailyBestToday = state.score;
-  save();
-  track('game_over', {
-    score:           state.score,
-    is_new_best:     state.score >= state.best,
-    duration_sec:    duration,
-    max_combo:       state.maxComboThisGame || 0,
-    lines_cleared:   state.linesClearedThisGame || 0,
-    games_played_today: state.gamesPlayedToday,
-    daily:           wasDaily,
-    daily_ymd:       wasDaily ? dailyYMDAtGameOver : null,
-  });
-  // Submit score in the background; the demo doesn't wait on it. Stash the
-  // daily-rank for the daily-result modal — the demo's onDone reads it.
-  submitScore(state.score, wasDaily ? 'daily' : 'regular').then(resp => {
-    if (wasDaily) {
-      state.pendingDailyResult = {
-        rank: resp && resp.rank,
-        score: state.score,
-      };
-      // If the demo already finished and the daily-result modal is showing,
-      // update its text now.
-      const dt = document.getElementById('daily-result-text');
-      if (dt && document.getElementById('modal-daily-result').classList.contains('show')) {
-        const r = state.pendingDailyResult;
-        dt.textContent = r.rank
-          ? t('dailyRankText', { score: formatNum(r.score), rank: r.rank })
-          : t('dailyDoneText', { score: formatNum(r.score) });
-      }
-    }
-  });
-  // Compose the regular-mode stats grid now so the modal is ready the moment
-  // the loss demo finishes (no flash of empty content).
   const mm = String(Math.floor(duration / 60)).padStart(2, '0');
   const ss = String(duration % 60).padStart(2, '0');
   document.getElementById('go-summary').innerHTML =
@@ -3462,29 +3262,38 @@ function onGameOver() {
       '<div style="grid-column: span 2;"><b>' + t('duration') + ':</b> ' + mm + ':' + ss + '</div>' +
     '</div>' +
     (state.score >= state.best && state.best > 0 ? '<div style="color:var(--accent-dark);font-weight:900;">' + t('newBest') + '</div>' : '');
-  // Kick off the loss demo. When it ends it'll call showGameOverResult.
-  startLossDemo(showGameOverResult);
-}
-
-function showGameOverResult() {
-  // Final death tone fires now — after the player has seen the "why".
-  sfx('gameover');
-  TG.haptic('error');
-  if (state.dailyMode) {
-    const r = state.pendingDailyResult;
-    const dt = document.getElementById('daily-result-text');
-    if (r && dt) {
-      dt.textContent = r.rank
-        ? t('dailyRankText', { score: formatNum(r.score), rank: r.rank })
-        : t('dailyDoneText', { score: formatNum(r.score) });
-    } else if (dt) {
-      // Submission still pending — show placeholder; resolve handler updates later.
-      dt.textContent = t('dailyDoneText', { score: formatNum(state.score) });
-    }
-    openModal('modal-daily-result');
-  } else {
-    openModal('modal-gameover');
+  // Submit score to the leaderboard for the correct mode. Fire-and-forget;
+  // we surface the rank in the daily-result modal once it lands.
+  const wasDaily = !!state.dailyMode;
+  const dailyYMDAtGameOver = state.dailyYMD;
+  if (wasDaily) {
+    // Track best-daily-today locally so the player sees their own peak.
+    if (state.score > (state.dailyBestToday || 0)) state.dailyBestToday = state.score;
   }
+  submitScore(state.score, wasDaily ? 'daily' : 'regular').then(resp => {
+    if (wasDaily) {
+      const rank = resp && resp.rank;
+      const txt = rank
+        ? t('dailyRankText', { score: formatNum(state.score), rank })
+        : t('dailyDoneText', { score: formatNum(state.score) });
+      document.getElementById('daily-result-text').textContent = txt;
+      closeAllModals();
+      openModal('modal-daily-result');
+    }
+  });
+  // Regular game-over modal still shows for non-daily runs.
+  if (!wasDaily) openModal('modal-gameover');
+  save();
+  track('game_over', {
+    score:           state.score,
+    is_new_best:     state.score >= state.best,
+    duration_sec:    duration,
+    max_combo:       state.maxComboThisGame || 0,
+    lines_cleared:   state.linesClearedThisGame || 0,
+    games_played_today: state.gamesPlayedToday,
+    daily:           wasDaily,
+    daily_ymd:       wasDaily ? dailyYMDAtGameOver : null,
+  });
 }
 
 function resetProgress() {
