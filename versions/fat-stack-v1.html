@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#FFF6E5">
+<title>Fat Stack</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root {
+  --bg: #FFF6E5;
+  --board-bg: #FFE9C5;
+  --cell-empty: #F4DFB1;
+  --cell-empty-edge: #E5C887;
+  --text: #2A1B0A;
+  --text-soft: #6A5135;
+  --accent: #FFB100;
+  --accent-dark: #E89400;
+  --gold: #FFD166;
+  --danger: #EF476F;
+  --shadow: rgba(40, 25, 0, 0.18);
+  --shadow-soft: rgba(40, 25, 0, 0.10);
+  --t0: #FF6B35;
+  --t1: #06D6A0;
+  --t2: #9D4EDD;
+  --t3: #118AB2;
+  --t4: #EF476F;
+  --t5: #FFD166;
+  --t0e: #C04A1F;
+  --t1e: #04A37A;
+  --t2e: #6F32A6;
+  --t3e: #0B6889;
+  --t4e: #C92C50;
+  --t5e: #D9A437;
+  --tg-safe-top: 0px;
+  --tg-safe-bottom: 0px;
+}
+[data-theme="dark"] {
+  --bg: #0F0E1A;
+  --board-bg: #1B1A2E;
+  --cell-empty: #2A2848;
+  --cell-empty-edge: #3D3A60;
+  --text: #FFFFFF;
+  --text-soft: #B0AEC4;
+  --accent: #FFD166;
+  --accent-dark: #FFB100;
+  --shadow: rgba(0, 0, 0, 0.5);
+  --shadow-soft: rgba(0, 0, 0, 0.3);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+}
+#app {
+  position: fixed; inset: 0;
+  padding-top: var(--tg-safe-top); padding-bottom: var(--tg-safe-bottom);
+  display: flex; flex-direction: column; align-items: stretch;
+}
+.top-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px 6px; gap: 8px;
+}
+.hud {
+  display: flex; gap: 8px; flex: 1;
+}
+.hud-cell {
+  background: var(--board-bg); border-radius: 14px;
+  padding: 7px 12px; box-shadow: 0 3px 0 var(--shadow);
+  min-width: 78px; text-align: center; flex-shrink: 0;
+}
+.hud-cell .lbl {
+  font-size: 9px; color: var(--text-soft);
+  text-transform: uppercase; letter-spacing: 0.6px; font-weight: 700;
+}
+.hud-cell .val {
+  font-size: 17px; font-weight: 900; color: var(--text); margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.hud-cell.hi .val { color: var(--accent-dark); }
+.hud-cell.streak .val::before { content: '🔥 '; font-size: 14px; }
+
+.icon-btns { display: flex; gap: 6px; flex-shrink: 0; }
+.btn-icon {
+  background: var(--board-bg); border-radius: 12px;
+  width: 38px; height: 38px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 3px 0 var(--shadow); cursor: pointer; font-size: 18px;
+  transition: transform 80ms;
+}
+.btn-icon:active { transform: translateY(2px); }
+.btn-icon.shop { background: linear-gradient(135deg, var(--gold), var(--accent)); color: var(--text); }
+
+#mascot-canvas {
+  position: absolute; top: calc(var(--tg-safe-top) + 60px); right: 10px;
+  width: 64px; height: 64px; pointer-events: none; z-index: 5;
+}
+
+#game-canvas-wrap {
+  flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+  position: relative; padding: 0 4px; min-height: 0;
+}
+#game-canvas { display: block; touch-action: none; }
+
+/* Modals */
+.modal-bg {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+  z-index: 100; display: none; align-items: center; justify-content: center;
+  padding: 16px; backdrop-filter: blur(4px);
+}
+.modal-bg.show { display: flex; animation: fadeIn 180ms ease-out; }
+.modal {
+  background: var(--bg); border-radius: 22px; padding: 22px 18px;
+  max-width: 380px; width: 100%; max-height: 92vh; overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  animation: modalPop 280ms cubic-bezier(.18,1.2,.4,1);
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPop {
+  from { transform: scale(0.85) translateY(20px); opacity: 0; }
+  60%  { transform: scale(1.03) translateY(-2px); opacity: 1; }
+  to   { transform: scale(1) translateY(0); }
+}
+.modal h2 {
+  margin: 0 0 8px; font-size: 22px; font-weight: 900; text-align: center;
+  color: var(--text);
+}
+.modal p {
+  margin: 4px 0 16px; text-align: center; color: var(--text-soft); font-size: 14px;
+}
+.btn {
+  display: block; width: 100%; padding: 14px 16px;
+  background: var(--accent); color: white; border: none;
+  border-radius: 14px; font-size: 16px; font-weight: 900;
+  box-shadow: 0 4px 0 var(--accent-dark);
+  margin-bottom: 10px; cursor: pointer; font-family: inherit;
+  transition: transform 80ms;
+  letter-spacing: 0.3px;
+}
+.btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--accent-dark); }
+.btn.secondary {
+  background: var(--board-bg); color: var(--text); box-shadow: 0 4px 0 var(--shadow);
+}
+.btn.secondary:active { box-shadow: 0 1px 0 var(--shadow); }
+.btn.stars {
+  background: linear-gradient(135deg, #FFB100 0%, #FF6B35 100%);
+  box-shadow: 0 4px 0 #C04A1F;
+}
+.btn.stars:active { box-shadow: 0 1px 0 #C04A1F; }
+.btn .price-pill {
+  display: inline-block; background: rgba(0,0,0,0.18); padding: 2px 10px;
+  border-radius: 999px; margin-left: 8px; font-size: 14px;
+}
+
+.shop-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px;
+}
+.shop-item {
+  background: var(--board-bg); border-radius: 14px; padding: 12px 8px;
+  text-align: center; cursor: pointer; box-shadow: 0 3px 0 var(--shadow);
+  transition: transform 80ms;
+}
+.shop-item:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--shadow); }
+.shop-item .icon { font-size: 30px; margin-bottom: 2px; }
+.shop-item .name {
+  font-size: 12px; font-weight: 800; color: var(--text); line-height: 1.2;
+}
+.shop-item .price {
+  font-size: 14px; font-weight: 900; color: var(--accent-dark); margin-top: 6px;
+}
+.shop-item.featured {
+  background: linear-gradient(135deg, #FFE9C5, #FFB100);
+  grid-column: span 2;
+}
+[data-theme="dark"] .shop-item.featured {
+  background: linear-gradient(135deg, #3D3A60, #FFB100);
+}
+.shop-item.featured .name { font-size: 14px; }
+
+.setting-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 4px; border-bottom: 1px solid var(--shadow-soft);
+  gap: 10px;
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-row .lbl { font-size: 14px; font-weight: 700; }
+.toggle {
+  width: 48px; height: 28px; background: var(--shadow);
+  border-radius: 14px; position: relative; cursor: pointer; flex-shrink: 0;
+}
+.toggle::after {
+  content: ''; position: absolute; left: 3px; top: 3px;
+  width: 22px; height: 22px; background: white; border-radius: 50%;
+  transition: left 180ms cubic-bezier(.18,1.2,.4,1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.toggle.on { background: var(--accent); }
+.toggle.on::after { left: 23px; }
+select {
+  font-family: inherit; padding: 8px 10px; border-radius: 10px;
+  border: 1.5px solid var(--shadow-soft); background: var(--bg);
+  color: var(--text); font-weight: 700; font-size: 14px;
+}
+
+[dir="rtl"] { direction: rtl; }
+[dir="rtl"] .icon-btns { flex-direction: row-reverse; }
+
+.score-pop {
+  position: absolute; pointer-events: none; font-size: 24px; font-weight: 900;
+  color: var(--accent-dark);
+  text-shadow: 0 2px 0 white, 0 4px 8px var(--shadow);
+  z-index: 50; transform: translate(-50%, -50%);
+  animation: scorePop 750ms cubic-bezier(.18,1,.27,1) forwards;
+}
+@keyframes scorePop {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  20%  { opacity: 1; transform: translate(-50%, -68%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -140%) scale(1); }
+}
+.combo-flash {
+  position: fixed; left: 50%; top: 32%;
+  transform: translate(-50%, -50%); pointer-events: none; z-index: 60;
+  font-size: 52px; font-weight: 900; color: var(--accent);
+  text-shadow: 0 0 24px var(--accent), 0 4px 0 var(--accent-dark);
+  opacity: 0;
+}
+.combo-flash.show { animation: comboFlash 900ms cubic-bezier(.18,1,.27,1) forwards; }
+@keyframes comboFlash {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }
+  20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2) rotate(2deg); }
+  70%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(0.9); }
+}
+
+.toast {
+  position: fixed; left: 50%; bottom: 80px; transform: translateX(-50%);
+  background: var(--text); color: var(--bg);
+  padding: 10px 18px; border-radius: 999px; font-weight: 700;
+  font-size: 13px; z-index: 200; opacity: 0; pointer-events: none;
+  white-space: nowrap;
+}
+.toast.show { animation: toastIn 2200ms ease-out forwards; }
+@keyframes toastIn {
+  0%   { opacity: 0; transform: translate(-50%, 8px); }
+  10%  { opacity: 1; transform: translate(-50%, 0); }
+  85%  { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -8px); }
+}
+
+a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
+.small { font-size: 11px; color: var(--text-soft); text-align: center; margin-top: 8px; }
+.divider { height: 1px; background: var(--shadow-soft); margin: 12px 0; }
+
+.banner {
+  background: linear-gradient(135deg, var(--accent), var(--gold));
+  border-radius: 14px; padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; box-shadow: 0 3px 0 var(--accent-dark);
+}
+.banner .b-icon { font-size: 24px; }
+.banner .b-text { flex: 1; }
+.banner .b-text .b-title { font-size: 13px; font-weight: 900; color: var(--text); }
+.banner .b-text .b-sub { font-size: 11px; color: var(--text); opacity: 0.78; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top-row">
+    <div class="hud">
+      <div class="hud-cell">
+        <div class="lbl" data-i18n="score">Score</div>
+        <div class="val" id="hud-score">0</div>
+      </div>
+      <div class="hud-cell hi">
+        <div class="lbl" data-i18n="best">Best</div>
+        <div class="val" id="hud-best">0</div>
+      </div>
+      <div class="hud-cell streak">
+        <div class="lbl" data-i18n="streak">Streak</div>
+        <div class="val" id="hud-streak">0</div>
+      </div>
+    </div>
+    <div class="icon-btns">
+      <div class="btn-icon shop" id="btn-shop" title="Shop">⭐</div>
+      <div class="btn-icon" id="btn-settings" title="Settings">⚙</div>
+    </div>
+  </div>
+  <canvas id="mascot-canvas" width="128" height="128"></canvas>
+  <div id="game-canvas-wrap">
+    <canvas id="game-canvas"></canvas>
+  </div>
+</div>
+
+<div class="combo-flash" id="combo-flash"></div>
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="modal-welcome">
+  <div class="modal">
+    <h2 data-i18n="welcomeTitle">Welcome to Fat Stack</h2>
+    <p data-i18n="welcomeSub">Drag the 3 pieces onto the board. Fill any row or column to clear it. Chain clears for combos!</p>
+    <button class="btn" data-action="welcome-start" data-i18n="welcomePlay">Let's stack!</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-gameover">
+  <div class="modal">
+    <h2 data-i18n="gameOver">Game Over</h2>
+    <p id="go-summary" data-i18n="gameOverSub">No more moves. Revive to keep your run going?</p>
+    <button class="btn stars" data-action="revive" id="btn-revive">
+      <span data-i18n="revive">Revive</span>
+      <span class="price-pill">⭐ 30</span>
+    </button>
+    <button class="btn secondary" data-action="restart" data-i18n="restart">New Game</button>
+    <button class="btn secondary" data-action="share-score" data-i18n="shareScore">Share Score</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-shop">
+  <div class="modal">
+    <h2 data-i18n="shopTitle">Shop</h2>
+    <p data-i18n="shopSub">Stars-only. No ads, ever.</p>
+    <div class="banner">
+      <div class="b-icon">🎯</div>
+      <div class="b-text">
+        <div class="b-title" data-i18n="dailyTitle">Daily Challenge</div>
+        <div class="b-sub" id="daily-status" data-i18n="dailyPlay">Play today's puzzle</div>
+      </div>
+      <button class="btn" style="width:auto; padding:8px 14px; margin:0; font-size:12px;" data-action="daily" data-i18n="play">Play</button>
+    </div>
+    <div class="shop-grid" id="shop-grid"></div>
+    <div class="divider"></div>
+    <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-settings">
+  <div class="modal">
+    <h2 data-i18n="settingsTitle">Settings</h2>
+    <div class="setting-row">
+      <div class="lbl" data-i18n="setLang">Language</div>
+      <select id="lang-select"></select>
+    </div>
+    <div class="setting-row">
+      <div class="lbl" data-i18n="setTheme">Dark mode</div>
+      <div class="toggle" id="toggle-theme"></div>
+    </div>
+    <div class="setting-row">
+      <div class="lbl" data-i18n="setSound">Sound</div>
+      <div class="toggle" id="toggle-sound"></div>
+    </div>
+    <div class="setting-row">
+      <div class="lbl" data-i18n="setHaptics">Haptics</div>
+      <div class="toggle" id="toggle-haptics"></div>
+    </div>
+    <div class="setting-row">
+      <div class="lbl" data-i18n="setMusic">Music</div>
+      <div class="toggle" id="toggle-music"></div>
+    </div>
+    <div class="divider"></div>
+    <p class="small">
+      <a href="privacy.html" target="_blank" data-i18n="privacy">Privacy</a> ·
+      <a href="terms.html" target="_blank" data-i18n="terms">Terms</a>
+    </p>
+    <p class="small" id="version-line"></p>
+    <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// === 1. CONSTANTS & STATE
+// ============================================================
+
+const VERSION = 'v0.1.0';
+const GRID = 8;
+const TRAY = 3;
+
+// Stars SKUs mirrored from server.js (display only — server is source of truth).
+const SKUS = {
+  revive:       { id: 'revive',       price: 30,  emoji: '💖', tKey: 'skuRevive' },
+  hint_pack:    { id: 'hint_pack',    price: 60,  emoji: '💡', tKey: 'skuHintPack' },
+  gems_small:   { id: 'gems_small',   price: 99,  emoji: '💎', tKey: 'skuGemsSmall' },
+  starter_pack: { id: 'starter_pack', price: 199, emoji: '🎁', tKey: 'skuStarterPack' },
+  gems_big:     { id: 'gems_big',     price: 399, emoji: '💰', tKey: 'skuGemsBig' },
+  gems_mega:    { id: 'gems_mega',    price: 750, emoji: '🏆', tKey: 'skuGemsMega' },
+  no_bust:      { id: 'no_bust',      price: 50,  emoji: '🛡', tKey: 'skuNoBust' },
+  skin_neon:    { id: 'skin_neon',    price: 150, emoji: '🌈', tKey: 'skuSkinNeon' },
+  skin_wood:    { id: 'skin_wood',    price: 150, emoji: '🪵', tKey: 'skuSkinWood' },
+  battle_pass:  { id: 'battle_pass',  price: 500, emoji: '🎖', tKey: 'skuBattlePass' },
+};
+
+const SHOP_ORDER = ['starter_pack', 'revive', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass'];
+
+// Game state — entirely in-memory + localStorage save.
+const state = {
+  board: makeEmptyBoard(),
+  tray: [],          // [{shape, color, used}]
+  score: 0,
+  best: 0,
+  combo: 0,
+  comboTimer: 0,
+  streak: 0,
+  lastPlayedYMD: '',
+  gems: 0,
+  revives: 0,
+  hints: 0,
+  noBust: 0,
+  skins: ['default'],
+  activeSkin: 'default',
+  battlePassUntil: 0,
+  settings: {
+    sound: true,
+    haptics: true,
+    music: false,
+    theme: 'light',
+    lang: 'en',
+  },
+  // runtime-only (not persisted)
+  drag: null,
+  cells: [],         // [{x,y,color,scale,settle}] for animated tiles
+  particles: [],     // [{x,y,vx,vy,life,maxLife,color,size}]
+  scorePops: [],     // DOM elements managed by spawnScorePop
+  paintSkin: null,
+  iapEnabled: false,
+  gameOver: false,
+  welcomed: false,
+  mascotBounce: 0,
+  shake: 0,
+};
+
+function makeEmptyBoard() {
+  const b = [];
+  for (let y = 0; y < GRID; y++) {
+    const row = [];
+    for (let x = 0; x < GRID; x++) row.push(-1);
+    b.push(row);
+  }
+  return b;
+}
+
+// ============================================================
+// === 2. SHAPE LIBRARY
+// ============================================================
+// Each shape is an array of [dx, dy] offsets from origin (top-left of bounding box).
+
+const SHAPES = [
+  // singles & lines
+  { cells: [[0,0]],                                           weight: 4 },
+  { cells: [[0,0],[1,0]],                                     weight: 6 },
+  { cells: [[0,0],[0,1]],                                     weight: 6 },
+  { cells: [[0,0],[1,0],[2,0]],                               weight: 7 },
+  { cells: [[0,0],[0,1],[0,2]],                               weight: 7 },
+  { cells: [[0,0],[1,0],[2,0],[3,0]],                         weight: 5 },
+  { cells: [[0,0],[0,1],[0,2],[0,3]],                         weight: 5 },
+  { cells: [[0,0],[1,0],[2,0],[3,0],[4,0]],                   weight: 3 },
+  { cells: [[0,0],[0,1],[0,2],[0,3],[0,4]],                   weight: 3 },
+  // 2x2 square
+  { cells: [[0,0],[1,0],[0,1],[1,1]],                         weight: 7 },
+  // 3x3 square
+  { cells: [[0,0],[1,0],[2,0],[0,1],[1,1],[2,1],[0,2],[1,2],[2,2]], weight: 2 },
+  // L 2x2 — 4 rotations
+  { cells: [[0,0],[0,1],[1,1]],                               weight: 5 },
+  { cells: [[0,0],[1,0],[0,1]],                               weight: 5 },
+  { cells: [[0,0],[1,0],[1,1]],                               weight: 5 },
+  { cells: [[1,0],[0,1],[1,1]],                               weight: 5 },
+  // L 3x3 — 4 rotations
+  { cells: [[0,0],[0,1],[0,2],[1,2],[2,2]],                   weight: 4 },
+  { cells: [[0,0],[1,0],[2,0],[0,1],[0,2]],                   weight: 4 },
+  { cells: [[0,0],[1,0],[2,0],[2,1],[2,2]],                   weight: 4 },
+  { cells: [[2,0],[2,1],[0,2],[1,2],[2,2]],                   weight: 4 },
+  // T 3x3 — 4 rotations
+  { cells: [[0,0],[1,0],[2,0],[1,1]],                         weight: 4 },
+  { cells: [[1,0],[0,1],[1,1],[1,2]],                         weight: 4 },
+  { cells: [[1,0],[0,1],[1,1],[2,1]],                         weight: 4 },
+  { cells: [[0,0],[0,1],[1,1],[0,2]],                         weight: 4 },
+  // S / Z
+  { cells: [[1,0],[2,0],[0,1],[1,1]],                         weight: 3 },
+  { cells: [[0,0],[0,1],[1,1],[1,2]],                         weight: 3 },
+  { cells: [[0,0],[1,0],[1,1],[2,1]],                         weight: 3 },
+  { cells: [[1,0],[0,1],[1,1],[0,2]],                         weight: 3 },
+];
+
+function pickShape() {
+  let total = 0;
+  for (const s of SHAPES) total += s.weight;
+  let r = Math.random() * total;
+  for (const s of SHAPES) {
+    r -= s.weight;
+    if (r <= 0) return s;
+  }
+  return SHAPES[0];
+}
+
+// ============================================================
+// === 3. I18N TABLE (20 languages)
+// ============================================================
+
+const STRINGS = {
+  en: {
+    score: 'Score', best: 'Best', streak: 'Streak',
+    welcomeTitle: 'Welcome to Fat Stack',
+    welcomeSub: 'Drag the 3 pieces onto the board. Fill any row or column to clear it. Chain clears for combos!',
+    welcomePlay: "Let's stack!",
+    gameOver: 'Game Over',
+    gameOverSub: 'No more moves. Revive to keep your run going?',
+    revive: 'Revive',
+    restart: 'New Game',
+    shareScore: 'Share Score',
+    shopTitle: 'Shop', shopSub: 'Stars-only. No ads, ever.',
+    dailyTitle: 'Daily Challenge', dailyPlay: "Play today's puzzle", dailyDone: 'Done for today ✓',
+    play: 'Play', close: 'Close',
+    settingsTitle: 'Settings',
+    setLang: 'Language', setTheme: 'Dark mode', setSound: 'Sound', setHaptics: 'Haptics', setMusic: 'Music',
+    privacy: 'Privacy', terms: 'Terms',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'INSANE!', stacked: 'STACKED!',
+    newBest: 'New best! 🏆',
+    streakUp: 'Streak +1 🔥',
+    revived: 'Revived! Keep going.',
+    purchased: 'Purchased ✓',
+    purchaseFailed: 'Purchase failed',
+    iapDisabled: 'IAP not available here',
+    skuRevive: 'Revive',
+    skuHintPack: '5 Hints',
+    skuGemsSmall: '500 Gems',
+    skuStarterPack: 'Starter Pack',
+    skuGemsBig: '3,500 Gems',
+    skuGemsMega: '12,000 Gems',
+    skuNoBust: 'No-Bust',
+    skuSkinNeon: 'Neon Skin',
+    skuSkinWood: 'Wood Skin',
+    skuBattlePass: 'Season Pass',
+    bestValue: 'BEST VALUE',
+    shareText: '🟧 I scored {score} in Fat Stack! Beat me 👉',
+  },
+  ru: {
+    score: 'Очки', best: 'Рекорд', streak: 'Серия',
+    welcomeTitle: 'Добро пожаловать в Fat Stack',
+    welcomeSub: 'Перетаскивай 3 фигуры на поле. Заполняй ряды и колонки целиком — они исчезают. Делай комбо!',
+    welcomePlay: 'Поехали!',
+    gameOver: 'Игра окончена',
+    gameOverSub: 'Ходов больше нет. Использовать оживление, чтобы продолжить?',
+    revive: 'Оживить',
+    restart: 'Новая игра',
+    shareScore: 'Поделиться счётом',
+    shopTitle: 'Магазин', shopSub: 'Только Stars. Никакой рекламы.',
+    dailyTitle: 'Ежедневный челлендж', dailyPlay: 'Играть сегодняшний', dailyDone: 'Сегодня сделано ✓',
+    play: 'Играть', close: 'Закрыть',
+    settingsTitle: 'Настройки',
+    setLang: 'Язык', setTheme: 'Тёмная тема', setSound: 'Звук', setHaptics: 'Вибро', setMusic: 'Музыка',
+    privacy: 'Конфиденциальность', terms: 'Условия',
+    combo: 'КОМБО!', mega: 'МЕГА!', insane: 'БЕЗУМИЕ!', stacked: 'СТЭК!',
+    newBest: 'Новый рекорд! 🏆',
+    streakUp: 'Серия +1 🔥',
+    revived: 'Оживлён! Продолжай.',
+    purchased: 'Куплено ✓',
+    purchaseFailed: 'Покупка не удалась',
+    iapDisabled: 'Покупки тут недоступны',
+    skuRevive: 'Оживление',
+    skuHintPack: '5 подсказок',
+    skuGemsSmall: '500 гемов',
+    skuStarterPack: 'Стартовый набор',
+    skuGemsBig: '3 500 гемов',
+    skuGemsMega: '12 000 гемов',
+    skuNoBust: 'Страховка',
+    skuSkinNeon: 'Неоновый скин',
+    skuSkinWood: 'Деревянный скин',
+    skuBattlePass: 'Сезонный пропуск',
+    bestValue: 'ЛУЧШАЯ ЦЕНА',
+    shareText: '🟧 Я набрал {score} в Fat Stack! Побей меня 👉',
+  },
+  ar: {
+    score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
+    welcomeTitle: 'مرحبًا بك في Fat Stack',
+    welcomeSub: 'اسحب القطع الثلاث إلى اللوحة. املأ صفًا أو عمودًا لمسحه. سلسل المسح للحصول على كومبو!',
+    welcomePlay: 'هيا نلعب!',
+    gameOver: 'انتهت اللعبة', gameOverSub: 'لا توجد حركات. هل تريد إحياء؟',
+    revive: 'إحياء', restart: 'لعبة جديدة', shareScore: 'شارك النتيجة',
+    shopTitle: 'المتجر', shopSub: 'بالنجوم فقط. بلا إعلانات.',
+    dailyTitle: 'تحدي اليوم', dailyPlay: 'العب لغز اليوم', dailyDone: 'تم اليوم ✓',
+    play: 'العب', close: 'إغلاق',
+    settingsTitle: 'الإعدادات', setLang: 'اللغة', setTheme: 'وضع داكن', setSound: 'الصوت', setHaptics: 'الاهتزاز', setMusic: 'الموسيقى',
+    privacy: 'الخصوصية', terms: 'الشروط',
+    combo: 'كومبو!', mega: 'ميجا!', insane: 'جنون!', stacked: 'مكدّس!',
+    bestValue: 'أفضل قيمة', purchased: 'تم الشراء ✓', purchaseFailed: 'فشل الشراء',
+    shareText: '🟧 سجلت {score} في Fat Stack! اهزمني 👈',
+  },
+  he: {
+    score: 'ניקוד', best: 'שיא', streak: 'רצף',
+    welcomeTitle: 'ברוכים הבאים ל-Fat Stack',
+    welcomeSub: 'גרור 3 חלקים ללוח. מלא שורה או עמודה כדי לנקות. שרשרת ניקויים = קומבו!',
+    welcomePlay: 'יאללה!',
+    gameOver: 'המשחק נגמר', gameOverSub: 'אין מהלכים. להחיות?',
+    revive: 'החייאה', restart: 'משחק חדש', shareScore: 'שתף',
+    shopTitle: 'חנות', shopSub: 'רק כוכבים. בלי פרסומות.',
+    dailyTitle: 'אתגר יומי', dailyPlay: 'שחק את היום', dailyDone: 'בוצע ✓',
+    play: 'שחק', close: 'סגור',
+    settingsTitle: 'הגדרות', setLang: 'שפה', setTheme: 'מצב כהה', setSound: 'צליל', setHaptics: 'רטט', setMusic: 'מוזיקה',
+    privacy: 'פרטיות', terms: 'תנאים',
+    combo: 'קומבו!', mega: 'מגה!', insane: 'מטורף!', stacked: 'ערימה!',
+    bestValue: 'הכי משתלם', purchased: 'נרכש ✓', purchaseFailed: 'הרכישה נכשלה',
+    shareText: '🟧 קלעתי {score} ב-Fat Stack! נסה לנצח 👉',
+  },
+  zh: {
+    score: '分数', best: '最佳', streak: '连胜',
+    welcomeTitle: '欢迎来到 Fat Stack',
+    welcomeSub: '把 3 个方块拖到棋盘上。填满任一行或列即可消除。连消获得连击！',
+    welcomePlay: '开始堆叠！',
+    gameOver: '游戏结束', gameOverSub: '没有可下步。复活继续？',
+    revive: '复活', restart: '新游戏', shareScore: '分享分数',
+    shopTitle: '商店', shopSub: '仅 Stars，没有广告。',
+    dailyTitle: '每日挑战', dailyPlay: '玩今天的谜题', dailyDone: '今日已完成 ✓',
+    play: '开始', close: '关闭',
+    settingsTitle: '设置', setLang: '语言', setTheme: '深色模式', setSound: '音效', setHaptics: '震动', setMusic: '音乐',
+    privacy: '隐私', terms: '条款',
+    combo: '连击!', mega: '超连击!', insane: '疯狂!', stacked: '堆叠!',
+    bestValue: '超值', purchased: '已购买 ✓', purchaseFailed: '购买失败',
+    shareText: '🟧 我在 Fat Stack 拿到 {score} 分！来挑战 👉',
+  },
+  ko: {
+    score: '점수', best: '최고', streak: '연속',
+    welcomeTitle: 'Fat Stack에 오신 걸 환영합니다',
+    welcomeSub: '3개의 조각을 보드에 끌어 놓으세요. 행이나 열을 채우면 사라집니다. 연속 클리어로 콤보!',
+    welcomePlay: '시작!',
+    gameOver: '게임 오버', gameOverSub: '더 이상 둘 곳이 없어요. 부활하시겠어요?',
+    revive: '부활', restart: '새 게임', shareScore: '점수 공유',
+    shopTitle: '상점', shopSub: 'Stars만. 광고 없음.',
+    dailyTitle: '데일리 챌린지', dailyPlay: '오늘의 퍼즐 플레이', dailyDone: '오늘 완료 ✓',
+    play: '플레이', close: '닫기',
+    settingsTitle: '설정', setLang: '언어', setTheme: '다크 모드', setSound: '소리', setHaptics: '진동', setMusic: '음악',
+    privacy: '개인정보', terms: '약관',
+    combo: '콤보!', mega: '메가!', insane: '미친!', stacked: '스택!',
+    bestValue: '최고 가성비', purchased: '구매 완료 ✓', purchaseFailed: '구매 실패',
+    shareText: '🟧 Fat Stack에서 {score}점! 한번 이겨봐 👉',
+  },
+  ja: {
+    score: 'スコア', best: 'ベスト', streak: '連続',
+    welcomeTitle: 'Fat Stack へようこそ',
+    welcomeSub: '3つのピースを盤上にドラッグ。行や列を埋めると消えます。連続消去でコンボ！',
+    welcomePlay: '始める！',
+    gameOver: 'ゲームオーバー', gameOverSub: '置ける場所がありません。リバイブしますか？',
+    revive: 'リバイブ', restart: '新しいゲーム', shareScore: 'スコアをシェア',
+    shopTitle: 'ショップ', shopSub: 'Stars のみ。広告なし。',
+    dailyTitle: 'デイリーチャレンジ', dailyPlay: '今日のパズル', dailyDone: '今日は完了 ✓',
+    play: 'プレイ', close: '閉じる',
+    settingsTitle: '設定', setLang: '言語', setTheme: 'ダークモード', setSound: '効果音', setHaptics: '振動', setMusic: '音楽',
+    privacy: 'プライバシー', terms: '利用規約',
+    combo: 'コンボ!', mega: 'メガ!', insane: '狂気!', stacked: 'スタック!',
+    bestValue: 'お得', purchased: '購入完了 ✓', purchaseFailed: '購入失敗',
+    shareText: '🟧 Fat Stack で {score} 点！挑戦してみて 👉',
+  },
+  es: {
+    score: 'Puntos', best: 'Récord', streak: 'Racha',
+    welcomeTitle: 'Bienvenido a Fat Stack',
+    welcomeSub: 'Arrastra las 3 piezas al tablero. Llena cualquier fila o columna para limpiarla. ¡Encadena para combo!',
+    welcomePlay: '¡A apilar!',
+    gameOver: 'Fin del juego', gameOverSub: 'No hay movimientos. ¿Revivir?',
+    revive: 'Revivir', restart: 'Nueva partida', shareScore: 'Compartir',
+    shopTitle: 'Tienda', shopSub: 'Solo Stars. Sin anuncios.',
+    dailyTitle: 'Reto diario', dailyPlay: 'Jugar el de hoy', dailyDone: 'Hecho hoy ✓',
+    play: 'Jugar', close: 'Cerrar',
+    settingsTitle: 'Ajustes', setLang: 'Idioma', setTheme: 'Modo oscuro', setSound: 'Sonido', setHaptics: 'Vibración', setMusic: 'Música',
+    privacy: 'Privacidad', terms: 'Términos',
+    combo: '¡COMBO!', mega: '¡MEGA!', insane: '¡LOCURA!', stacked: '¡APILADO!',
+    bestValue: 'MEJOR OFERTA', purchased: 'Comprado ✓', purchaseFailed: 'Compra fallida',
+    shareText: '🟧 ¡Hice {score} puntos en Fat Stack! Supérame 👉',
+  },
+  pt: {
+    score: 'Pontos', best: 'Recorde', streak: 'Sequência',
+    welcomeTitle: 'Bem-vindo ao Fat Stack',
+    welcomeSub: 'Arraste as 3 peças para o tabuleiro. Encha qualquer linha ou coluna para limpá-la. Encadeie para combo!',
+    welcomePlay: 'Vamos empilhar!',
+    gameOver: 'Fim de jogo', gameOverSub: 'Sem jogadas. Reviver?',
+    revive: 'Reviver', restart: 'Novo jogo', shareScore: 'Compartilhar',
+    shopTitle: 'Loja', shopSub: 'Só Stars. Sem anúncios.',
+    dailyTitle: 'Desafio diário', dailyPlay: 'Jogar o de hoje', dailyDone: 'Feito hoje ✓',
+    play: 'Jogar', close: 'Fechar',
+    settingsTitle: 'Configurações', setLang: 'Idioma', setTheme: 'Modo escuro', setSound: 'Som', setHaptics: 'Vibração', setMusic: 'Música',
+    privacy: 'Privacidade', terms: 'Termos',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'LOUCURA!', stacked: 'STACKED!',
+    bestValue: 'MELHOR VALOR', purchased: 'Comprado ✓', purchaseFailed: 'Compra falhou',
+    shareText: '🟧 Fiz {score} pontos no Fat Stack! Tente me superar 👉',
+  },
+  fr: {
+    score: 'Score', best: 'Record', streak: 'Série',
+    welcomeTitle: 'Bienvenue dans Fat Stack',
+    welcomeSub: 'Glissez les 3 pièces sur le plateau. Remplissez une ligne ou colonne pour la vider. Enchaînez pour des combos !',
+    welcomePlay: 'On empile !',
+    gameOver: 'Game Over', gameOverSub: 'Plus de mouvements. Ranimer ?',
+    revive: 'Ranimer', restart: 'Nouvelle partie', shareScore: 'Partager',
+    shopTitle: 'Boutique', shopSub: 'Stars uniquement. Sans pub.',
+    dailyTitle: 'Défi quotidien', dailyPlay: "Jouer celui d'aujourd'hui", dailyDone: "Fait aujourd'hui ✓",
+    play: 'Jouer', close: 'Fermer',
+    settingsTitle: 'Paramètres', setLang: 'Langue', setTheme: 'Mode sombre', setSound: 'Son', setHaptics: 'Vibration', setMusic: 'Musique',
+    privacy: 'Confidentialité', terms: 'Conditions',
+    combo: 'COMBO !', mega: 'MÉGA !', insane: 'FOU !', stacked: 'EMPILÉ !',
+    bestValue: 'MEILLEURE VALEUR', purchased: 'Acheté ✓', purchaseFailed: 'Achat échoué',
+    shareText: "🟧 J'ai fait {score} sur Fat Stack ! Bats-moi 👉",
+  },
+  de: {
+    score: 'Punkte', best: 'Beste', streak: 'Serie',
+    welcomeTitle: 'Willkommen bei Fat Stack',
+    welcomeSub: 'Zieh die 3 Teile aufs Brett. Füll eine Reihe oder Spalte, um sie zu löschen. Kette für Combos!',
+    welcomePlay: 'Los stapeln!',
+    gameOver: 'Game Over', gameOverSub: 'Keine Züge mehr. Wiederbeleben?',
+    revive: 'Wiederbeleben', restart: 'Neues Spiel', shareScore: 'Teilen',
+    shopTitle: 'Shop', shopSub: 'Nur Stars. Keine Werbung.',
+    dailyTitle: 'Tägliche Challenge', dailyPlay: 'Heutiges Rätsel', dailyDone: 'Heute erledigt ✓',
+    play: 'Spielen', close: 'Schließen',
+    settingsTitle: 'Einstellungen', setLang: 'Sprache', setTheme: 'Dunkler Modus', setSound: 'Ton', setHaptics: 'Vibration', setMusic: 'Musik',
+    privacy: 'Datenschutz', terms: 'Bedingungen',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'IRRE!', stacked: 'STACKED!',
+    bestValue: 'BESTES ANGEBOT', purchased: 'Gekauft ✓', purchaseFailed: 'Kauf fehlgeschlagen',
+    shareText: '🟧 Ich habe {score} in Fat Stack! Schlag mich 👉',
+  },
+  nl: {
+    score: 'Score', best: 'Beste', streak: 'Reeks',
+    welcomeTitle: 'Welkom bij Fat Stack',
+    welcomeSub: 'Sleep de 3 stukjes op het bord. Vul een rij of kolom om te wissen. Ketting voor combos!',
+    welcomePlay: 'Stapelen maar!',
+    gameOver: 'Game Over', gameOverSub: 'Geen zetten meer. Reanimeren?',
+    revive: 'Reanimeren', restart: 'Nieuw spel', shareScore: 'Delen',
+    shopTitle: 'Winkel', shopSub: 'Alleen Stars. Geen advertenties.',
+    dailyTitle: 'Dagelijkse uitdaging', dailyPlay: 'Speel die van vandaag', dailyDone: 'Vandaag gedaan ✓',
+    play: 'Spelen', close: 'Sluiten',
+    settingsTitle: 'Instellingen', setLang: 'Taal', setTheme: 'Donkere modus', setSound: 'Geluid', setHaptics: 'Trillen', setMusic: 'Muziek',
+    privacy: 'Privacy', terms: 'Voorwaarden',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'GEK!', stacked: 'STACKED!',
+    bestValue: 'BESTE WAARDE', purchased: 'Gekocht ✓', purchaseFailed: 'Aankoop mislukt',
+    shareText: '🟧 Ik scoorde {score} in Fat Stack! Versla me 👉',
+  },
+  it: {
+    score: 'Punti', best: 'Record', streak: 'Serie',
+    welcomeTitle: 'Benvenuto in Fat Stack',
+    welcomeSub: 'Trascina i 3 pezzi sulla griglia. Riempi una riga o colonna per cancellarla. Concatena per combo!',
+    welcomePlay: 'Impiliamo!',
+    gameOver: 'Game Over', gameOverSub: 'Niente mosse. Rianimare?',
+    revive: 'Rianima', restart: 'Nuova partita', shareScore: 'Condividi',
+    shopTitle: 'Negozio', shopSub: 'Solo Stars. Nessuna pubblicità.',
+    dailyTitle: 'Sfida giornaliera', dailyPlay: 'Gioca quella di oggi', dailyDone: 'Fatto oggi ✓',
+    play: 'Gioca', close: 'Chiudi',
+    settingsTitle: 'Impostazioni', setLang: 'Lingua', setTheme: 'Modalità scura', setSound: 'Suono', setHaptics: 'Vibrazione', setMusic: 'Musica',
+    privacy: 'Privacy', terms: 'Termini',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'PAZZESCO!', stacked: 'STACKED!',
+    bestValue: 'MIGLIORE OFFERTA', purchased: 'Acquistato ✓', purchaseFailed: 'Acquisto fallito',
+    shareText: '🟧 Ho fatto {score} in Fat Stack! Battimi 👉',
+  },
+  sv: {
+    score: 'Poäng', best: 'Bästa', streak: 'Svit',
+    welcomeTitle: 'Välkommen till Fat Stack',
+    welcomeSub: 'Dra de 3 bitarna till brädet. Fyll en rad eller kolumn för att rensa. Kedja för combo!',
+    welcomePlay: 'Stapla på!',
+    gameOver: 'Slut', gameOverSub: 'Inga drag kvar. Återuppliva?',
+    revive: 'Återuppliva', restart: 'Nytt spel', shareScore: 'Dela',
+    shopTitle: 'Butik', shopSub: 'Bara Stars. Inga annonser.',
+    dailyTitle: 'Daglig utmaning', dailyPlay: 'Spela dagens', dailyDone: 'Klart idag ✓',
+    play: 'Spela', close: 'Stäng',
+    settingsTitle: 'Inställningar', setLang: 'Språk', setTheme: 'Mörkt läge', setSound: 'Ljud', setHaptics: 'Vibration', setMusic: 'Musik',
+    privacy: 'Integritet', terms: 'Villkor',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'GALET!', stacked: 'STACKED!',
+    bestValue: 'BÄSTA VÄRDE', purchased: 'Köpt ✓', purchaseFailed: 'Köp misslyckades',
+    shareText: '🟧 Jag fick {score} i Fat Stack! Slå mig 👉',
+  },
+  pl: {
+    score: 'Wynik', best: 'Rekord', streak: 'Seria',
+    welcomeTitle: 'Witaj w Fat Stack',
+    welcomeSub: 'Przeciągnij 3 elementy na planszę. Wypełnij wiersz lub kolumnę, by ją usunąć. Łącz dla combo!',
+    welcomePlay: 'Układamy!',
+    gameOver: 'Koniec gry', gameOverSub: 'Brak ruchów. Wskrzesić?',
+    revive: 'Wskrześ', restart: 'Nowa gra', shareScore: 'Udostępnij',
+    shopTitle: 'Sklep', shopSub: 'Tylko Stars. Bez reklam.',
+    dailyTitle: 'Dzienne wyzwanie', dailyPlay: 'Zagraj dzisiejsze', dailyDone: 'Dziś gotowe ✓',
+    play: 'Graj', close: 'Zamknij',
+    settingsTitle: 'Ustawienia', setLang: 'Język', setTheme: 'Tryb ciemny', setSound: 'Dźwięk', setHaptics: 'Wibracja', setMusic: 'Muzyka',
+    privacy: 'Prywatność', terms: 'Warunki',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'SZAŁ!', stacked: 'STACKED!',
+    bestValue: 'NAJLEPSZA OFERTA', purchased: 'Kupione ✓', purchaseFailed: 'Zakup nieudany',
+    shareText: '🟧 Mam {score} w Fat Stack! Pobij mnie 👉',
+  },
+  tr: {
+    score: 'Skor', best: 'Rekor', streak: 'Seri',
+    welcomeTitle: "Fat Stack'e hoş geldin",
+    welcomeSub: '3 parçayı tahtaya sürükle. Bir satırı ya da sütunu doldur, temizle. Zincirle = kombo!',
+    welcomePlay: 'Hadi yığalım!',
+    gameOver: 'Oyun bitti', gameOverSub: 'Hamle yok. Diriltilsin mi?',
+    revive: 'Dirilt', restart: 'Yeni oyun', shareScore: 'Paylaş',
+    shopTitle: 'Mağaza', shopSub: 'Sadece Stars. Reklamsız.',
+    dailyTitle: 'Günlük zorluk', dailyPlay: 'Bugünkünü oyna', dailyDone: 'Bugün tamam ✓',
+    play: 'Oyna', close: 'Kapat',
+    settingsTitle: 'Ayarlar', setLang: 'Dil', setTheme: 'Karanlık mod', setSound: 'Ses', setHaptics: 'Titreşim', setMusic: 'Müzik',
+    privacy: 'Gizlilik', terms: 'Şartlar',
+    combo: 'KOMBO!', mega: 'MEGA!', insane: 'ÇILGIN!', stacked: 'STACKED!',
+    bestValue: 'EN İYİ FİYAT', purchased: 'Satın alındı ✓', purchaseFailed: 'Satın alma başarısız',
+    shareText: "🟧 Fat Stack'te {score} yaptım! Beni geç 👉",
+  },
+  uk: {
+    score: 'Очки', best: 'Рекорд', streak: 'Серія',
+    welcomeTitle: 'Ласкаво просимо до Fat Stack',
+    welcomeSub: 'Перетягуй 3 фігури на поле. Заповнюй рядок чи стовпчик, щоб очистити. Ланцюги дають комбо!',
+    welcomePlay: 'Поїхали!',
+    gameOver: 'Гра закінчена', gameOverSub: 'Ходів немає. Відродити?',
+    revive: 'Відродити', restart: 'Нова гра', shareScore: 'Поділитись',
+    shopTitle: 'Магазин', shopSub: 'Лише Stars. Без реклами.',
+    dailyTitle: 'Щоденний виклик', dailyPlay: "Зіграй сьогоднішній", dailyDone: 'Сьогодні готово ✓',
+    play: 'Грати', close: 'Закрити',
+    settingsTitle: 'Налаштування', setLang: 'Мова', setTheme: 'Темна тема', setSound: 'Звук', setHaptics: 'Вібро', setMusic: 'Музика',
+    privacy: 'Приватність', terms: 'Умови',
+    combo: 'КОМБО!', mega: 'МЕГА!', insane: 'ШАЛ!', stacked: 'СТЕК!',
+    bestValue: 'НАЙКРАЩА ЦІНА', purchased: 'Куплено ✓', purchaseFailed: 'Не вдалося купити',
+    shareText: '🟧 Я набрав {score} у Fat Stack! Побий мене 👉',
+  },
+  hi: {
+    score: 'स्कोर', best: 'सर्वश्रेष्ठ', streak: 'श्रृंखला',
+    welcomeTitle: 'Fat Stack में आपका स्वागत है',
+    welcomeSub: '3 टुकड़ों को बोर्ड पर खींचें। किसी पंक्ति या कॉलम को भरकर साफ करें। श्रृंखला = कॉम्बो!',
+    welcomePlay: 'चलो ढेर लगाएँ!',
+    gameOver: 'खेल ख़त्म', gameOverSub: 'कोई चाल नहीं। पुनर्जीवित करें?',
+    revive: 'पुनर्जीवित', restart: 'नया खेल', shareScore: 'साझा करें',
+    shopTitle: 'दुकान', shopSub: 'केवल Stars। कोई विज्ञापन नहीं।',
+    dailyTitle: 'दैनिक चुनौती', dailyPlay: "आज का खेलें", dailyDone: 'आज पूरा ✓',
+    play: 'खेलें', close: 'बंद',
+    settingsTitle: 'सेटिंग्स', setLang: 'भाषा', setTheme: 'डार्क मोड', setSound: 'ध्वनि', setHaptics: 'कंपन', setMusic: 'संगीत',
+    privacy: 'गोपनीयता', terms: 'शर्तें',
+    combo: 'कॉम्बो!', mega: 'मेगा!', insane: 'पागल!', stacked: 'स्टैक!',
+    bestValue: 'सर्वोत्तम मूल्य', purchased: 'खरीदा ✓', purchaseFailed: 'खरीद विफल',
+    shareText: '🟧 मैंने Fat Stack में {score} बनाए! मुझे हराओ 👉',
+  },
+  id: {
+    score: 'Skor', best: 'Terbaik', streak: 'Beruntun',
+    welcomeTitle: 'Selamat datang di Fat Stack',
+    welcomeSub: 'Seret 3 potongan ke papan. Isi baris atau kolom untuk membersihkannya. Rantai untuk kombo!',
+    welcomePlay: 'Ayo tumpuk!',
+    gameOver: 'Permainan berakhir', gameOverSub: 'Tidak ada langkah. Hidupkan kembali?',
+    revive: 'Hidupkan', restart: 'Game baru', shareScore: 'Bagikan',
+    shopTitle: 'Toko', shopSub: 'Hanya Stars. Tanpa iklan.',
+    dailyTitle: 'Tantangan Harian', dailyPlay: 'Mainkan hari ini', dailyDone: 'Selesai hari ini ✓',
+    play: 'Main', close: 'Tutup',
+    settingsTitle: 'Pengaturan', setLang: 'Bahasa', setTheme: 'Mode gelap', setSound: 'Suara', setHaptics: 'Getar', setMusic: 'Musik',
+    privacy: 'Privasi', terms: 'Ketentuan',
+    combo: 'KOMBO!', mega: 'MEGA!', insane: 'GILA!', stacked: 'STACKED!',
+    bestValue: 'NILAI TERBAIK', purchased: 'Dibeli ✓', purchaseFailed: 'Pembelian gagal',
+    shareText: '🟧 Saya dapat {score} di Fat Stack! Kalahkan saya 👉',
+  },
+  vi: {
+    score: 'Điểm', best: 'Kỷ lục', streak: 'Chuỗi',
+    welcomeTitle: 'Chào mừng đến Fat Stack',
+    welcomeSub: 'Kéo 3 mảnh lên bảng. Lấp đầy hàng/cột để xoá. Liên hoàn = combo!',
+    welcomePlay: 'Xếp nào!',
+    gameOver: 'Hết game', gameOverSub: 'Không còn nước đi. Hồi sinh?',
+    revive: 'Hồi sinh', restart: 'Game mới', shareScore: 'Chia sẻ',
+    shopTitle: 'Cửa hàng', shopSub: 'Chỉ Stars. Không quảng cáo.',
+    dailyTitle: 'Thử thách ngày', dailyPlay: 'Chơi hôm nay', dailyDone: 'Xong hôm nay ✓',
+    play: 'Chơi', close: 'Đóng',
+    settingsTitle: 'Cài đặt', setLang: 'Ngôn ngữ', setTheme: 'Chế độ tối', setSound: 'Âm thanh', setHaptics: 'Rung', setMusic: 'Nhạc',
+    privacy: 'Riêng tư', terms: 'Điều khoản',
+    combo: 'COMBO!', mega: 'MEGA!', insane: 'ĐIÊN!', stacked: 'STACKED!',
+    bestValue: 'GIÁ TỐT NHẤT', purchased: 'Đã mua ✓', purchaseFailed: 'Mua thất bại',
+    shareText: '🟧 Tôi đạt {score} trong Fat Stack! Hạ tôi đi 👉',
+  },
+};
+
+const LANG_LABELS = {
+  en: 'English', ru: 'Русский', ar: 'العربية', he: 'עברית',
+  zh: '中文', ko: '한국어', ja: '日本語',
+  es: 'Español', pt: 'Português', fr: 'Français', de: 'Deutsch',
+  nl: 'Nederlands', it: 'Italiano', sv: 'Svenska', pl: 'Polski',
+  tr: 'Türkçe', uk: 'Українська', hi: 'हिन्दी', id: 'Bahasa', vi: 'Tiếng Việt',
+};
+const RTL_LANGS = new Set(['ar', 'he']);
+
+function t(key, params) {
+  const lang = state.settings.lang;
+  const s = (STRINGS[lang] && STRINGS[lang][key]) || STRINGS.en[key] || key;
+  if (!params) return s;
+  return s.replace(/\{(\w+)\}/g, (_, k) => params[k] != null ? params[k] : '');
+}
+
+function applyI18n() {
+  document.documentElement.lang = state.settings.lang;
+  document.documentElement.dir = RTL_LANGS.has(state.settings.lang) ? 'rtl' : 'ltr';
+  for (const el of document.querySelectorAll('[data-i18n]')) {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  }
+  const verEl = document.getElementById('version-line');
+  if (verEl) verEl.textContent = 'Fat Stack ' + VERSION;
+}
+
+function pickInitialLang() {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const cands = [];
+  if (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) {
+    cands.push(tg.initDataUnsafe.user.language_code);
+  }
+  if (navigator.language) cands.push(navigator.language);
+  if (navigator.languages) cands.push(...navigator.languages);
+  for (const c of cands) {
+    const base = String(c).toLowerCase().slice(0, 2);
+    if (STRINGS[base]) return base;
+  }
+  return 'en';
+}
+
+// ============================================================
+// === 4. TELEGRAM WEBAPP BRIDGE
+// ============================================================
+
+const tg = window.Telegram && window.Telegram.WebApp;
+const TG = {
+  ready() {
+    if (!tg) return;
+    try { tg.ready(); } catch (e) {}
+    try { tg.expand(); } catch (e) {}
+    try { tg.disableVerticalSwipes && tg.disableVerticalSwipes(); } catch (e) {}
+    this.applySafeArea();
+    if (tg.onEvent) {
+      try { tg.onEvent('viewportChanged', () => this.applySafeArea()); } catch (e) {}
+      try { tg.onEvent('safeAreaChanged', () => this.applySafeArea()); } catch (e) {}
+      try { tg.onEvent('contentSafeAreaChanged', () => this.applySafeArea()); } catch (e) {}
+    }
+  },
+  applySafeArea() {
+    if (!tg) return;
+    const csai = tg.contentSafeAreaInset || {};
+    const sai = tg.safeAreaInset || {};
+    const top = Math.max(csai.top || 0, sai.top || 0);
+    const bot = Math.max(csai.bottom || 0, sai.bottom || 0);
+    document.documentElement.style.setProperty('--tg-safe-top', top + 'px');
+    document.documentElement.style.setProperty('--tg-safe-bottom', bot + 'px');
+  },
+  haptic(kind) {
+    if (!state.settings.haptics || !tg || !tg.HapticFeedback) return;
+    try {
+      if (kind === 'light' || kind === 'medium' || kind === 'heavy' || kind === 'rigid' || kind === 'soft') {
+        tg.HapticFeedback.impactOccurred(kind);
+      } else if (kind === 'success' || kind === 'warning' || kind === 'error') {
+        tg.HapticFeedback.notificationOccurred(kind);
+      } else if (kind === 'select') {
+        tg.HapticFeedback.selectionChanged();
+      }
+    } catch (e) {}
+  },
+  initData() { return (tg && tg.initData) || ''; },
+  userLang() {
+    return (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code) || '';
+  },
+  shareUrl() {
+    const text = t('shareText', { score: state.score });
+    const u = (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param)
+      ? ('https://t.me/share/url?url=' + encodeURIComponent('https://t.me/') + '&text=' + encodeURIComponent(text))
+      : 'https://t.me/share/url?text=' + encodeURIComponent(text);
+    try { tg && tg.openTelegramLink ? tg.openTelegramLink(u) : window.open(u, '_blank'); } catch (e) { window.open(u, '_blank'); }
+  },
+  openInvoice(link, cb) {
+    if (!tg || !tg.openInvoice) { cb && cb('failed'); return; }
+    try { tg.openInvoice(link, (status) => cb && cb(status)); }
+    catch (e) { cb && cb('failed'); }
+  },
+};
+
+// ============================================================
+// === 5. AUDIO (synth — no external assets)
+// ============================================================
+
+let audioCtx = null;
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    audioCtx = new AC();
+  } catch (e) { return null; }
+  return audioCtx;
+}
+function beep(freq, dur, type, vol) {
+  if (!state.settings.sound) return;
+  const ac = ensureAudio();
+  if (!ac) return;
+  if (ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }
+  const o = ac.createOscillator();
+  const g = ac.createGain();
+  o.type = type || 'triangle';
+  o.frequency.value = freq;
+  g.gain.value = 0;
+  o.connect(g); g.connect(ac.destination);
+  const t0 = ac.currentTime;
+  const v = vol || 0.18;
+  g.gain.linearRampToValueAtTime(v, t0 + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+  o.start(t0);
+  o.stop(t0 + dur + 0.02);
+}
+function sfx(kind) {
+  if (kind === 'place')   { beep(440, 0.10, 'triangle', 0.20); }
+  else if (kind === 'pop'){ beep(660, 0.08, 'sine',     0.18); }
+  else if (kind === 'clear') {
+    beep(523, 0.10, 'square', 0.16);
+    setTimeout(() => beep(784, 0.10, 'square', 0.16), 60);
+    setTimeout(() => beep(1047,0.16, 'square', 0.16), 120);
+  }
+  else if (kind === 'combo'){
+    beep(880, 0.08, 'sawtooth', 0.18);
+    setTimeout(() => beep(1175, 0.08, 'sawtooth', 0.18), 70);
+    setTimeout(() => beep(1568, 0.20, 'sawtooth', 0.18), 140);
+  }
+  else if (kind === 'invalid'){ beep(180, 0.10, 'square', 0.14); }
+  else if (kind === 'gameover'){
+    beep(440, 0.15, 'sawtooth', 0.18);
+    setTimeout(() => beep(330, 0.20, 'sawtooth', 0.18), 140);
+    setTimeout(() => beep(220, 0.40, 'sawtooth', 0.18), 320);
+  }
+  else if (kind === 'star'){
+    beep(1320, 0.05, 'sine', 0.18);
+    setTimeout(() => beep(1760, 0.08, 'sine', 0.18), 50);
+  }
+}
+
+// ============================================================
+// === 6. CANVAS LAYOUT & DRAW
+// ============================================================
+
+const cvs = document.getElementById('game-canvas');
+const ctx = cvs.getContext('2d');
+let CSS_W = 0, CSS_H = 0;
+let CELL = 50;      // cell size in CSS pixels
+let BOARD_PX = CELL * GRID;
+let TRAY_Y = 0;     // y-coord of tray top
+let TRAY_H = 0;     // tray height
+let TRAY_CELL = 32; // shrunk cell size in the tray
+
+function fitCanvas() {
+  const wrap = document.getElementById('game-canvas-wrap');
+  const wRect = wrap.getBoundingClientRect();
+  const W = wRect.width;
+  const H = wRect.height;
+  // Tray gets ~30% of vertical height (with a min of 120px, max 200px).
+  const trayHTarget = Math.max(120, Math.min(200, H * 0.28));
+  const boardMax = H - trayHTarget - 20;
+  const boardSize = Math.min(W - 8, boardMax);
+  CELL = Math.floor(boardSize / GRID);
+  BOARD_PX = CELL * GRID;
+  CSS_W = Math.max(BOARD_PX, W - 8);
+  CSS_H = BOARD_PX + trayHTarget + 16;
+  TRAY_Y = BOARD_PX + 12;
+  TRAY_H = trayHTarget;
+  TRAY_CELL = Math.min(34, Math.floor((CSS_W / TRAY) / 5.5));
+  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  cvs.width = Math.floor(CSS_W * dpr);
+  cvs.height = Math.floor(CSS_H * dpr);
+  cvs.style.width = CSS_W + 'px';
+  cvs.style.height = CSS_H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function boardOriginX() { return (CSS_W - BOARD_PX) / 2; }
+function boardOriginY() { return 0; }
+
+function tileColor(i, edge) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(edge ? ('--t' + i + 'e') : ('--t' + i)).trim();
+  return v || (edge ? '#888' : '#ccc');
+}
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function drawRoundedRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function drawTile(cx, cy, size, colorIdx, scale, alpha) {
+  const s = scale != null ? scale : 1;
+  const a = alpha != null ? alpha : 1;
+  const inset = Math.max(2, size * 0.06);
+  const w = (size - inset * 2) * s;
+  const x = cx + (size - w) / 2;
+  const y = cy + (size - w) / 2;
+  const r = w * 0.18;
+  ctx.save();
+  ctx.globalAlpha = a;
+  // Shadow drop
+  ctx.fillStyle = tileColor(colorIdx, true);
+  drawRoundedRect(x, y + Math.max(2, w * 0.08), w, w, r);
+  ctx.fill();
+  // Face
+  ctx.fillStyle = tileColor(colorIdx, false);
+  drawRoundedRect(x, y, w, w, r);
+  ctx.fill();
+  // Top highlight stripe
+  ctx.globalAlpha = 0.25 * a;
+  ctx.fillStyle = '#fff';
+  drawRoundedRect(x + w * 0.15, y + w * 0.12, w * 0.7, w * 0.18, w * 0.08);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawEmptyCell(cx, cy, size) {
+  const inset = Math.max(2, size * 0.06);
+  const x = cx + inset;
+  const y = cy + inset;
+  const w = size - inset * 2;
+  ctx.fillStyle = cssVar('--cell-empty');
+  drawRoundedRect(x, y, w, w, w * 0.14);
+  ctx.fill();
+  ctx.strokeStyle = cssVar('--cell-empty-edge');
+  ctx.lineWidth = 1;
+  drawRoundedRect(x + 0.5, y + 0.5, w - 1, w - 1, w * 0.14);
+  ctx.stroke();
+}
+
+function drawBoard() {
+  const ox = boardOriginX();
+  const oy = boardOriginY();
+  // Board backdrop
+  const pad = 6;
+  ctx.fillStyle = cssVar('--board-bg');
+  drawRoundedRect(ox - pad, oy - pad, BOARD_PX + pad * 2, BOARD_PX + pad * 2, 16);
+  ctx.fill();
+  // Cells
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const cx = ox + x * CELL;
+      const cy = oy + y * CELL;
+      drawEmptyCell(cx, cy, CELL);
+    }
+  }
+  // Drag preview (ghost)
+  if (state.drag && state.drag.preview && state.drag.preview.valid) {
+    for (const [gx, gy] of state.drag.preview.cells) {
+      const cx = ox + gx * CELL;
+      const cy = oy + gy * CELL;
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      drawTile(cx, cy, CELL, state.drag.shape.colorIdx, 0.92, 1);
+      ctx.restore();
+    }
+    // Highlight rows/cols that would clear
+    const clears = wouldClear(state.drag.preview.cells);
+    ctx.save();
+    ctx.fillStyle = cssVar('--accent');
+    ctx.globalAlpha = 0.18;
+    for (const r of clears.rows) {
+      ctx.fillRect(ox, oy + r * CELL, BOARD_PX, CELL);
+    }
+    for (const c of clears.cols) {
+      ctx.fillRect(ox + c * CELL, oy, CELL, BOARD_PX);
+    }
+    ctx.restore();
+  } else if (state.drag && state.drag.preview && !state.drag.preview.valid) {
+    // Show red tint on cells that overlap or would overflow
+    for (const [gx, gy] of state.drag.preview.cells) {
+      if (gx < 0 || gx >= GRID || gy < 0 || gy >= GRID) continue;
+      const cx = ox + gx * CELL;
+      const cy = oy + gy * CELL;
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = cssVar('--danger');
+      drawRoundedRect(cx + 4, cy + 4, CELL - 8, CELL - 8, 8);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+  // Placed cells (with animation)
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      const v = state.board[y][x];
+      if (v < 0) continue;
+      const cellAnim = state.cells[y * GRID + x];
+      const scale = cellAnim ? cellAnim.scale : 1;
+      const alpha = cellAnim ? cellAnim.alpha : 1;
+      drawTile(ox + x * CELL, oy + y * CELL, CELL, v, scale, alpha);
+    }
+  }
+}
+
+function drawTray() {
+  const slotW = CSS_W / TRAY;
+  for (let i = 0; i < TRAY; i++) {
+    const slot = state.tray[i];
+    if (!slot || slot.used) continue;
+    // Skip drawing the slot if it's being dragged from
+    if (state.drag && state.drag.slotIdx === i) continue;
+    const cx = i * slotW + slotW / 2;
+    const cy = TRAY_Y + TRAY_H / 2;
+    drawShape(cx, cy, slot.shape, slot.colorIdx, TRAY_CELL);
+  }
+  // Draw the dragged shape last (on top)
+  if (state.drag) {
+    const slot = state.tray[state.drag.slotIdx];
+    if (slot && !slot.used) {
+      // While dragging on the board, snap visually to the grid cell.
+      if (state.drag.preview) {
+        // Snap to top-left grid cell of preview origin
+        const [ox0, oy0] = state.drag.preview.origin;
+        const ox = boardOriginX() + ox0 * CELL;
+        const oy = boardOriginY() + oy0 * CELL;
+        drawShapeAtTL(ox, oy, slot.shape, slot.colorIdx, CELL, 1);
+      } else {
+        drawShape(state.drag.x, state.drag.y, slot.shape, slot.colorIdx, CELL * 0.92);
+      }
+    }
+  }
+}
+
+function shapeBox(shape) {
+  let maxX = 0, maxY = 0;
+  for (const [dx, dy] of shape.cells) {
+    if (dx > maxX) maxX = dx;
+    if (dy > maxY) maxY = dy;
+  }
+  return { w: maxX + 1, h: maxY + 1 };
+}
+function drawShape(cx, cy, shape, colorIdx, size) {
+  const box = shapeBox(shape);
+  const x0 = cx - (box.w * size) / 2;
+  const y0 = cy - (box.h * size) / 2;
+  drawShapeAtTL(x0, y0, shape, colorIdx, size, 1);
+}
+function drawShapeAtTL(x0, y0, shape, colorIdx, size, scale) {
+  for (const [dx, dy] of shape.cells) {
+    drawTile(x0 + dx * size, y0 + dy * size, size, colorIdx, scale != null ? scale : 1, 1);
+  }
+}
+
+function drawParticles() {
+  for (const p of state.particles) {
+    const a = p.life / p.maxLife;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, a));
+    ctx.fillStyle = tileColor(p.color, false);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * a, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawAll() {
+  ctx.clearRect(0, 0, CSS_W, CSS_H);
+  // Screen shake
+  ctx.save();
+  if (state.shake > 0) {
+    const sx = (Math.random() - 0.5) * state.shake;
+    const sy = (Math.random() - 0.5) * state.shake;
+    ctx.translate(sx, sy);
+  }
+  drawBoard();
+  drawTray();
+  drawParticles();
+  ctx.restore();
+}
+
+// ============================================================
+// === 7. GAME LOGIC
+// ============================================================
+
+function refillTrayIfEmpty() {
+  const allUsed = state.tray.every(s => s == null || s.used);
+  if (allUsed) {
+    state.tray = [];
+    for (let i = 0; i < TRAY; i++) {
+      state.tray.push({
+        shape: pickShape(),
+        colorIdx: Math.floor(Math.random() * 6),
+        used: false,
+      });
+    }
+  }
+}
+function fillNewTray() {
+  state.tray = [];
+  for (let i = 0; i < TRAY; i++) {
+    state.tray.push({
+      shape: pickShape(),
+      colorIdx: Math.floor(Math.random() * 6),
+      used: false,
+    });
+  }
+}
+
+function canPlaceAt(shape, gx, gy) {
+  for (const [dx, dy] of shape.cells) {
+    const x = gx + dx, y = gy + dy;
+    if (x < 0 || x >= GRID || y < 0 || y >= GRID) return false;
+    if (state.board[y][x] >= 0) return false;
+  }
+  return true;
+}
+function placeAt(shape, gx, gy, colorIdx) {
+  const placed = [];
+  for (const [dx, dy] of shape.cells) {
+    const x = gx + dx, y = gy + dy;
+    state.board[y][x] = colorIdx;
+    placed.push([x, y]);
+    // Tile pop-in animation
+    state.cells[y * GRID + x] = { scale: 0.0, alpha: 1, settle: true, settleVel: 0 };
+  }
+  return placed;
+}
+function wouldClear(placedCells) {
+  const rowsHit = new Set();
+  const colsHit = new Set();
+  for (const [x, y] of placedCells) {
+    rowsHit.add(y);
+    colsHit.add(x);
+  }
+  const fullRows = [];
+  const fullCols = [];
+  // Simulate placement on a shallow copy
+  const sim = state.board.map(r => r.slice());
+  for (const [x, y] of placedCells) sim[y][x] = 1;
+  for (const r of rowsHit) {
+    if (sim[r].every(c => c >= 0)) fullRows.push(r);
+  }
+  for (const c of colsHit) {
+    let full = true;
+    for (let y = 0; y < GRID; y++) if (sim[y][c] < 0) { full = false; break; }
+    if (full) fullCols.push(c);
+  }
+  return { rows: fullRows, cols: fullCols };
+}
+function clearLines(rows, cols) {
+  const cleared = [];
+  for (const r of rows) {
+    for (let x = 0; x < GRID; x++) {
+      if (state.board[r][x] >= 0) {
+        cleared.push([x, r, state.board[r][x]]);
+        state.board[r][x] = -1;
+        state.cells[r * GRID + x] = { scale: 1.2, alpha: 0.6, popOut: true };
+      }
+    }
+  }
+  for (const c of cols) {
+    for (let y = 0; y < GRID; y++) {
+      if (state.board[y][c] >= 0) {
+        cleared.push([c, y, state.board[y][c]]);
+        state.board[y][c] = -1;
+        state.cells[y * GRID + c] = { scale: 1.2, alpha: 0.6, popOut: true };
+      }
+    }
+  }
+  return cleared;
+}
+function anyShapeFits(shape) {
+  for (let y = 0; y < GRID; y++) {
+    for (let x = 0; x < GRID; x++) {
+      if (canPlaceAt(shape, x, y)) return true;
+    }
+  }
+  return false;
+}
+function checkGameOver() {
+  for (const slot of state.tray) {
+    if (!slot || slot.used) continue;
+    if (anyShapeFits(slot.shape)) return false;
+  }
+  return true;
+}
+
+// ============================================================
+// === 8. INPUT (touch + mouse)
+// ============================================================
+
+function getEventPos(e) {
+  const r = cvs.getBoundingClientRect();
+  let cx, cy;
+  if (e.touches && e.touches[0]) { cx = e.touches[0].clientX; cy = e.touches[0].clientY; }
+  else if (e.changedTouches && e.changedTouches[0]) { cx = e.changedTouches[0].clientX; cy = e.changedTouches[0].clientY; }
+  else { cx = e.clientX; cy = e.clientY; }
+  return { x: cx - r.left, y: cy - r.top };
+}
+
+function hitTrayShape(px, py) {
+  if (py < TRAY_Y || py > TRAY_Y + TRAY_H) return -1;
+  const slotW = CSS_W / TRAY;
+  const i = Math.floor(px / slotW);
+  if (i < 0 || i >= TRAY) return -1;
+  const slot = state.tray[i];
+  if (!slot || slot.used) return -1;
+  return i;
+}
+
+function computePreview() {
+  if (!state.drag) return null;
+  const slot = state.tray[state.drag.slotIdx];
+  if (!slot) return null;
+  const shape = slot.shape;
+  // Lift the touch above the finger so the player sees the shape.
+  const liftY = CELL * 1.6;
+  const adjY = state.drag.y - liftY;
+  // Map to grid origin (top-left of bounding box)
+  const ox = boardOriginX();
+  const oy = boardOriginY();
+  const box = shapeBox(shape);
+  const gx = Math.round((state.drag.x - ox - (box.w * CELL) / 2) / CELL);
+  const gy = Math.round((adjY - oy) / CELL);
+  // Off-board → no preview
+  if (gx < -box.w + 1 || gx >= GRID || gy < 0 || gy >= GRID) {
+    return { origin: [gx, gy], cells: [], valid: false };
+  }
+  const cells = shape.cells.map(([dx, dy]) => [gx + dx, gy + dy]);
+  const valid = canPlaceAt(shape, gx, gy);
+  return { origin: [gx, gy], cells, valid };
+}
+
+cvs.addEventListener('mousedown', onPointerDown);
+cvs.addEventListener('mousemove', onPointerMove);
+cvs.addEventListener('mouseup', onPointerUp);
+cvs.addEventListener('mouseleave', onPointerCancel);
+cvs.addEventListener('touchstart', onPointerDown, { passive: false });
+cvs.addEventListener('touchmove', onPointerMove, { passive: false });
+cvs.addEventListener('touchend', onPointerUp, { passive: false });
+cvs.addEventListener('touchcancel', onPointerCancel, { passive: false });
+
+function onPointerDown(e) {
+  e.preventDefault();
+  if (state.gameOver) return;
+  const p = getEventPos(e);
+  const trayIdx = hitTrayShape(p.x, p.y);
+  if (trayIdx < 0) return;
+  state.drag = { slotIdx: trayIdx, x: p.x, y: p.y, shape: state.tray[trayIdx].shape, preview: null };
+  state.drag.preview = computePreview();
+  TG.haptic('select');
+}
+function onPointerMove(e) {
+  if (!state.drag) return;
+  e.preventDefault();
+  const p = getEventPos(e);
+  state.drag.x = p.x;
+  state.drag.y = p.y;
+  state.drag.preview = computePreview();
+}
+function onPointerUp(e) {
+  if (!state.drag) return;
+  e.preventDefault();
+  const slot = state.tray[state.drag.slotIdx];
+  const prev = state.drag.preview;
+  if (slot && prev && prev.valid) {
+    const [gx, gy] = prev.origin;
+    placePieceAt(slot, gx, gy, state.drag.slotIdx);
+  } else {
+    sfx('invalid');
+    TG.haptic('warning');
+  }
+  state.drag = null;
+}
+function onPointerCancel(e) {
+  state.drag = null;
+}
+
+function placePieceAt(slot, gx, gy, slotIdx) {
+  const colorIdx = slot.colorIdx;
+  const placed = placeAt(slot.shape, gx, gy, colorIdx);
+  slot.used = true;
+  sfx('place');
+  TG.haptic('light');
+  // Place score: 1 point per cell
+  let scoreDelta = placed.length;
+  // Line clears
+  const clears = wouldClear(placed);
+  const totalLines = clears.rows.length + clears.cols.length;
+  if (totalLines > 0) {
+    const cleared = clearLines(clears.rows, clears.cols);
+    // 10 base per line + 10 * (linesSq - 1) for combos in same placement
+    const lineScore = 10 * totalLines;
+    const comboBonus = totalLines >= 2 ? (totalLines * totalLines * 5) : 0;
+    scoreDelta += lineScore + comboBonus;
+    state.combo += 1;
+    state.comboTimer = 1500;
+    if (state.combo >= 2 || totalLines >= 2) {
+      showComboFlash(state.combo, totalLines);
+    }
+    spawnClearParticles(cleared);
+    state.shake = Math.min(14, 5 + totalLines * 2 + state.combo);
+    sfx(totalLines >= 2 || state.combo >= 2 ? 'combo' : 'clear');
+    TG.haptic(totalLines >= 2 ? 'heavy' : 'medium');
+    bounceMascot(1.0 + Math.min(0.8, totalLines * 0.2 + state.combo * 0.1));
+  } else {
+    // No clear breaks combo
+    if (state.combo > 0) state.combo = 0;
+    bounceMascot(0.4);
+  }
+  state.score += scoreDelta;
+  spawnScorePop(scoreDelta, slot, placed);
+  if (state.score > state.best) {
+    if (state.best > 0) toast(t('newBest'));
+    state.best = state.score;
+  }
+  refillTrayIfEmpty();
+  updateHud();
+  save();
+  // Game over check
+  setTimeout(() => {
+    if (checkGameOver()) onGameOver();
+  }, 380);
+}
+
+// ============================================================
+// === 9. ANIMATIONS — spring tile-land, particles, combo flash
+// ============================================================
+
+let lastT = 0;
+function tick(now) {
+  const dt = Math.min(48, now - (lastT || now));
+  lastT = now;
+  // Tile-land spring + line-clear pop-out
+  for (let i = 0; i < GRID * GRID; i++) {
+    const c = state.cells[i];
+    if (!c) continue;
+    if (c.settle) {
+      // Spring toward 1.0
+      const target = 1.0;
+      const k = 0.55;       // stiffness
+      const damp = 0.55;    // damping
+      c.settleVel = (c.settleVel || 0) + (target - c.scale) * k;
+      c.settleVel *= damp;
+      c.scale += c.settleVel;
+      if (Math.abs(c.scale - 1) < 0.005 && Math.abs(c.settleVel) < 0.005) {
+        c.scale = 1;
+        c.settle = false;
+      }
+    }
+    if (c.popOut) {
+      c.scale += 0.04;
+      c.alpha -= 0.08;
+      if (c.alpha <= 0) state.cells[i] = null;
+    }
+  }
+  // Particles
+  for (let i = state.particles.length - 1; i >= 0; i--) {
+    const p = state.particles[i];
+    p.life -= dt;
+    p.x += p.vx * dt / 16;
+    p.y += p.vy * dt / 16;
+    p.vy += 0.4;       // gravity
+    p.vx *= 0.985;
+    if (p.life <= 0) state.particles.splice(i, 1);
+  }
+  // Mascot bounce envelope
+  if (state.mascotBounce > 0) state.mascotBounce *= 0.92;
+  if (state.mascotBounce < 0.01) state.mascotBounce = 0;
+  // Screen shake decay
+  if (state.shake > 0) state.shake *= 0.85;
+  if (state.shake < 0.2) state.shake = 0;
+  // Combo timer decay
+  if (state.comboTimer > 0) {
+    state.comboTimer -= dt;
+    if (state.comboTimer <= 0) state.combo = 0;
+  }
+  drawAll();
+  drawMascot();
+  requestAnimationFrame(tick);
+}
+
+function spawnClearParticles(cleared) {
+  const ox = boardOriginX(), oy = boardOriginY();
+  for (const [x, y, color] of cleared) {
+    const cx = ox + x * CELL + CELL / 2;
+    const cy = oy + y * CELL + CELL / 2;
+    const n = 6;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + Math.random() * 0.5;
+      const sp = 2 + Math.random() * 3;
+      state.particles.push({
+        x: cx, y: cy,
+        vx: Math.cos(a) * sp,
+        vy: Math.sin(a) * sp - 1,
+        life: 600 + Math.random() * 300,
+        maxLife: 800,
+        color, size: 5 + Math.random() * 3,
+      });
+    }
+  }
+}
+
+function spawnScorePop(amount, slot, placed) {
+  if (amount <= 0) return;
+  // Position above the first placed cell, in canvas coords → relative to wrap.
+  const wrap = document.getElementById('game-canvas-wrap');
+  const wrapRect = wrap.getBoundingClientRect();
+  const ox = boardOriginX(), oy = boardOriginY();
+  let cx = ox + CELL * GRID / 2;
+  let cy = oy + CELL * 2;
+  if (placed && placed.length) {
+    let avgX = 0, avgY = 0;
+    for (const [x, y] of placed) { avgX += x; avgY += y; }
+    avgX /= placed.length; avgY /= placed.length;
+    cx = ox + (avgX + 0.5) * CELL;
+    cy = oy + (avgY + 0.5) * CELL;
+  }
+  const el = document.createElement('div');
+  el.className = 'score-pop';
+  el.textContent = '+' + amount;
+  el.style.left = (cx) + 'px';
+  el.style.top = (cy) + 'px';
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+function showComboFlash(combo, lines) {
+  const el = document.getElementById('combo-flash');
+  let text;
+  if (lines >= 4 || combo >= 5) text = t('insane');
+  else if (lines >= 3 || combo >= 3) text = t('mega');
+  else if (lines >= 2 || combo >= 2) text = t('combo');
+  else text = t('stacked');
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;       // restart animation
+  el.classList.add('show');
+  sfx('star');
+}
+
+// ============================================================
+// === 10. MASCOT (canvas-drawn chubby cube)
+// ============================================================
+
+const mcvs = document.getElementById('mascot-canvas');
+const mctx = mcvs.getContext('2d');
+let mascotPhase = 0;
+function drawMascot() {
+  mascotPhase += 0.03;
+  const w = mcvs.width, h = mcvs.height;
+  mctx.clearRect(0, 0, w, h);
+  const bx = 16, by = 28;
+  const bw = w - 32, bh = h - 50;
+  // Bounce squash
+  const sq = state.mascotBounce > 0 ? state.mascotBounce : 0;
+  const squashY = 1 - sq * 0.18;
+  const squashX = 1 + sq * 0.12;
+  const idle = Math.sin(mascotPhase) * 1.5;
+  mctx.save();
+  mctx.translate(bx + bw / 2, by + bh + idle);
+  mctx.scale(squashX, squashY);
+  // Shadow
+  mctx.fillStyle = 'rgba(0,0,0,0.18)';
+  mctx.beginPath();
+  mctx.ellipse(0, 6, bw / 2.2, 6, 0, 0, Math.PI * 2);
+  mctx.fill();
+  // Body (chubby cube)
+  const r = bw * 0.22;
+  mctx.fillStyle = '#FFB100';
+  roundedRectPath(mctx, -bw / 2, -bh, bw, bh, r);
+  mctx.fill();
+  mctx.fillStyle = '#E89400';
+  roundedRectPath(mctx, -bw / 2, -bh + bh * 0.78, bw, bh * 0.22, r);
+  mctx.fill();
+  // Highlight stripe
+  mctx.fillStyle = 'rgba(255,255,255,0.32)';
+  roundedRectPath(mctx, -bw / 2 + 6, -bh + 4, bw - 12, 8, 4);
+  mctx.fill();
+  // Eyes
+  const eyeY = -bh * 0.55;
+  const eyeR = bw * 0.07;
+  mctx.fillStyle = '#2A1B0A';
+  mctx.beginPath(); mctx.arc(-bw * 0.18, eyeY, eyeR, 0, Math.PI * 2); mctx.fill();
+  mctx.beginPath(); mctx.arc( bw * 0.18, eyeY, eyeR, 0, Math.PI * 2); mctx.fill();
+  // Eye shine
+  mctx.fillStyle = 'white';
+  mctx.beginPath(); mctx.arc(-bw * 0.16, eyeY - eyeR * 0.4, eyeR * 0.35, 0, Math.PI * 2); mctx.fill();
+  mctx.beginPath(); mctx.arc( bw * 0.20, eyeY - eyeR * 0.4, eyeR * 0.35, 0, Math.PI * 2); mctx.fill();
+  // Mouth — bigger when bouncing
+  const smile = sq > 0.05 ? 1.2 : 0.9;
+  mctx.strokeStyle = '#2A1B0A';
+  mctx.lineWidth = 3;
+  mctx.lineCap = 'round';
+  mctx.beginPath();
+  mctx.arc(0, -bh * 0.30, bw * 0.12 * smile, 0.1 * Math.PI, 0.9 * Math.PI);
+  mctx.stroke();
+  // Cheeks
+  mctx.fillStyle = 'rgba(239,71,111,0.45)';
+  mctx.beginPath(); mctx.arc(-bw * 0.30, -bh * 0.40, bw * 0.06, 0, Math.PI * 2); mctx.fill();
+  mctx.beginPath(); mctx.arc( bw * 0.30, -bh * 0.40, bw * 0.06, 0, Math.PI * 2); mctx.fill();
+  mctx.restore();
+}
+function roundedRectPath(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+}
+function bounceMascot(amount) {
+  state.mascotBounce = Math.min(1.0, state.mascotBounce + amount);
+}
+
+// ============================================================
+// === 11. HUD + MODALS
+// ============================================================
+
+function updateHud() {
+  document.getElementById('hud-score').textContent = formatNum(state.score);
+  document.getElementById('hud-best').textContent = formatNum(state.best);
+  document.getElementById('hud-streak').textContent = state.streak;
+}
+function formatNum(n) {
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function openModal(id) {
+  for (const m of document.querySelectorAll('.modal-bg.show')) m.classList.remove('show');
+  document.getElementById(id).classList.add('show');
+}
+function closeAllModals() {
+  for (const m of document.querySelectorAll('.modal-bg.show')) m.classList.remove('show');
+}
+
+function renderShop() {
+  const grid = document.getElementById('shop-grid');
+  grid.innerHTML = '';
+  for (const id of SHOP_ORDER) {
+    const sku = SKUS[id];
+    const item = document.createElement('div');
+    item.className = 'shop-item' + (id === 'starter_pack' ? ' featured' : '');
+    item.innerHTML =
+      '<div class="icon">' + sku.emoji + '</div>' +
+      '<div class="name">' + t(sku.tKey) + '</div>' +
+      '<div class="price">⭐ ' + sku.price + '</div>' +
+      (id === 'starter_pack' ? '<div class="price" style="font-size:10px;color:var(--accent-dark);">' + t('bestValue') + '</div>' : '');
+    item.addEventListener('click', () => buySku(id));
+    grid.appendChild(item);
+  }
+  // Daily challenge status
+  const ds = document.getElementById('daily-status');
+  if (ds) {
+    const today = ymd();
+    if (state.lastDailyYMD === today) ds.textContent = t('dailyDone');
+    else ds.textContent = t('dailyPlay');
+  }
+}
+
+function toast(text) {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+}
+
+document.addEventListener('click', (e) => {
+  const a = e.target.closest('[data-action]');
+  if (!a) {
+    if (e.target.classList.contains('modal-bg')) closeAllModals();
+    return;
+  }
+  const action = a.getAttribute('data-action');
+  if (action === 'close-modal') { closeAllModals(); }
+  else if (action === 'welcome-start') {
+    state.welcomed = true; save();
+    closeAllModals();
+  }
+  else if (action === 'revive') { tryRevive(); }
+  else if (action === 'restart') { newGame(); closeAllModals(); }
+  else if (action === 'share-score') { TG.shareUrl(); }
+  else if (action === 'daily') { startDaily(); closeAllModals(); }
+});
+
+document.getElementById('btn-shop').addEventListener('click', () => { renderShop(); openModal('modal-shop'); });
+document.getElementById('btn-settings').addEventListener('click', () => { openModal('modal-settings'); });
+
+// Settings interactions
+function bindToggle(elId, key, onChange) {
+  const el = document.getElementById(elId);
+  function sync() {
+    if (state.settings[key]) el.classList.add('on'); else el.classList.remove('on');
+  }
+  el.addEventListener('click', () => {
+    state.settings[key] = !state.settings[key];
+    sync(); save();
+    onChange && onChange();
+  });
+  sync();
+}
+bindToggle('toggle-sound', 'sound');
+bindToggle('toggle-haptics', 'haptics');
+bindToggle('toggle-music', 'music');
+// Theme toggle stores a string ('light' | 'dark'), not a bool, so it has its
+// own handler instead of going through bindToggle.
+(function() {
+  const el = document.getElementById('toggle-theme');
+  const sync = () => {
+    if (state.settings.theme === 'dark') el.classList.add('on'); else el.classList.remove('on');
+  };
+  el.addEventListener('click', () => {
+    state.settings.theme = state.settings.theme === 'dark' ? 'light' : 'dark';
+    sync(); applyTheme(); save();
+  });
+  sync();
+})();
+
+function applyTheme() {
+  document.documentElement.setAttribute('data-theme', state.settings.theme === 'dark' ? 'dark' : 'light');
+}
+
+// Language selector
+function populateLangSelect() {
+  const sel = document.getElementById('lang-select');
+  sel.innerHTML = '';
+  for (const code of Object.keys(STRINGS)) {
+    const opt = document.createElement('option');
+    opt.value = code;
+    opt.textContent = LANG_LABELS[code] || code;
+    if (code === state.settings.lang) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  sel.addEventListener('change', () => {
+    state.settings.lang = sel.value;
+    applyI18n(); renderShop(); save();
+  });
+}
+
+// ============================================================
+// === 12. STARS IAP
+// ============================================================
+
+async function buySku(skuId) {
+  if (!state.iapEnabled) { toast(t('iapDisabled')); return; }
+  const initData = TG.initData();
+  if (!initData) { toast(t('iapDisabled')); return; }
+  try {
+    const r = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sku: skuId, initData }),
+    });
+    const data = await r.json();
+    if (!r.ok || !data.link) { toast(t('purchaseFailed')); return; }
+    TG.openInvoice(data.link, async (status) => {
+      if (status === 'paid') {
+        // Poll for grant
+        for (let i = 0; i < 6; i++) {
+          await new Promise(res => setTimeout(res, 700));
+          try {
+            const pr = await fetch('/api/poll-purchases', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ initData }),
+            });
+            const pdata = await pr.json();
+            if (pdata.purchases && pdata.purchases.length > 0) {
+              for (const p of pdata.purchases) applyGrant(p.grant);
+              save();
+              toast(t('purchased'));
+              renderShop();
+              return;
+            }
+          } catch (e) {}
+        }
+        // Even if we didn't get the grant via poll, mark as purchased.
+        toast(t('purchased'));
+      } else if (status === 'cancelled' || status === 'failed') {
+        toast(t('purchaseFailed'));
+      }
+    });
+  } catch (e) { toast(t('purchaseFailed')); }
+}
+
+function applyGrant(grant) {
+  if (!grant) return;
+  if (grant.gems)    state.gems    += grant.gems;
+  if (grant.revives) state.revives += grant.revives;
+  if (grant.hints)   state.hints   += grant.hints;
+  if (grant.noBust)  state.noBust  += grant.noBust;
+  if (grant.skins)   for (const s of grant.skins) { if (!state.skins.includes(s)) state.skins.push(s); }
+  if (grant.battlePass) state.battlePassUntil = Math.max(state.battlePassUntil, Date.now() + grant.battlePass * 24 * 60 * 60 * 1000);
+}
+
+function tryRevive() {
+  if (state.revives > 0) {
+    state.revives -= 1;
+    doRevive();
+    return;
+  }
+  buySku('revive');
+  // After purchase, the poll loop will increment revives; player can re-tap revive.
+}
+function doRevive() {
+  // Refill tray, clear half the board (top half) to give breathing room.
+  fillNewTray();
+  for (let y = 0; y < Math.floor(GRID / 2); y++) {
+    for (let x = 0; x < GRID; x++) state.board[y][x] = -1;
+  }
+  state.cells = [];
+  state.gameOver = false;
+  toast(t('revived'));
+  TG.haptic('success');
+  closeAllModals();
+  save();
+}
+
+// ============================================================
+// === 13. PERSISTENCE + STREAK + DAILY
+// ============================================================
+
+const STORE_KEY = 'fatstack.v1';
+function save() {
+  try {
+    const snap = {
+      board: state.board,
+      tray: state.tray,
+      score: state.score,
+      best: state.best,
+      streak: state.streak,
+      lastPlayedYMD: state.lastPlayedYMD,
+      gems: state.gems, revives: state.revives, hints: state.hints, noBust: state.noBust,
+      skins: state.skins, activeSkin: state.activeSkin,
+      battlePassUntil: state.battlePassUntil,
+      settings: state.settings,
+      welcomed: state.welcomed,
+      lastDailyYMD: state.lastDailyYMD,
+    };
+    localStorage.setItem(STORE_KEY, JSON.stringify(snap));
+  } catch (e) {}
+}
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return false;
+    const s = JSON.parse(raw);
+    if (s.board && s.board.length === GRID) state.board = s.board;
+    if (Array.isArray(s.tray) && s.tray.length === TRAY) state.tray = s.tray;
+    if (typeof s.score === 'number') state.score = s.score;
+    if (typeof s.best === 'number')  state.best  = s.best;
+    if (typeof s.streak === 'number') state.streak = s.streak;
+    if (s.lastPlayedYMD) state.lastPlayedYMD = s.lastPlayedYMD;
+    if (typeof s.gems === 'number') state.gems = s.gems;
+    if (typeof s.revives === 'number') state.revives = s.revives;
+    if (typeof s.hints === 'number') state.hints = s.hints;
+    if (typeof s.noBust === 'number') state.noBust = s.noBust;
+    if (Array.isArray(s.skins)) state.skins = s.skins;
+    if (s.activeSkin) state.activeSkin = s.activeSkin;
+    if (typeof s.battlePassUntil === 'number') state.battlePassUntil = s.battlePassUntil;
+    if (s.settings) Object.assign(state.settings, s.settings);
+    if (s.welcomed) state.welcomed = true;
+    if (s.lastDailyYMD) state.lastDailyYMD = s.lastDailyYMD;
+    return true;
+  } catch (e) { return false; }
+}
+
+function ymd(d) {
+  d = d || new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+function yesterdayYMD() {
+  const d = new Date(); d.setDate(d.getDate() - 1); return ymd(d);
+}
+function updateStreakOnPlay() {
+  const today = ymd();
+  if (state.lastPlayedYMD === today) return;          // already counted
+  if (state.lastPlayedYMD === yesterdayYMD()) {
+    state.streak += 1;
+    toast(t('streakUp'));
+  } else if (state.lastPlayedYMD === '') {
+    state.streak = 1;
+  } else {
+    state.streak = 1;
+  }
+  state.lastPlayedYMD = today;
+  save();
+}
+function streakRiskAt() {
+  // End of today (local). Player must play before this to keep the streak.
+  const d = new Date();
+  d.setHours(23, 59, 59, 0);
+  return d.getTime();
+}
+
+function startDaily() {
+  // For v0.1 the daily challenge is just a regular new game flagged as daily.
+  // Server-side seeded daily layouts come in a later iteration.
+  newGame();
+  state.lastDailyYMD = ymd();
+  save();
+}
+
+// ============================================================
+// === 14. GAME LIFECYCLE
+// ============================================================
+
+function newGame() {
+  state.board = makeEmptyBoard();
+  state.cells = [];
+  state.score = 0;
+  state.combo = 0;
+  state.comboTimer = 0;
+  state.particles = [];
+  state.gameOver = false;
+  state.shake = 0;
+  fillNewTray();
+  updateHud();
+  save();
+}
+
+function onGameOver() {
+  state.gameOver = true;
+  sfx('gameover');
+  TG.haptic('error');
+  updateStreakOnPlay();
+  document.getElementById('go-summary').textContent =
+    t('gameOverSub') + ' · ' + t('score') + ': ' + formatNum(state.score);
+  openModal('modal-gameover');
+}
+
+// ============================================================
+// === 15. SERVER HEARTBEAT (for bot notifications)
+// ============================================================
+
+async function heartbeat() {
+  const initData = TG.initData();
+  if (!initData) return;
+  try {
+    await fetch('/api/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initData,
+        lang: state.settings.lang,
+        streak: state.streak,
+        streakRiskAt: streakRiskAt(),
+      }),
+    });
+  } catch (e) {}
+}
+
+async function loadFlags() {
+  try {
+    const r = await fetch('/api/flags');
+    const d = await r.json();
+    state.iapEnabled = !!d.iap;
+  } catch (e) {}
+}
+
+// ============================================================
+// === 16. BOOT
+// ============================================================
+
+function boot() {
+  load();
+  if (!state.settings.lang || !STRINGS[state.settings.lang]) {
+    state.settings.lang = pickInitialLang();
+  }
+  applyI18n();
+  applyTheme();
+  populateLangSelect();
+  fitCanvas();
+  if (!state.tray || state.tray.length !== TRAY || state.tray.every(s => s && s.used)) {
+    fillNewTray();
+  }
+  updateHud();
+  renderShop();
+  TG.ready();
+  loadFlags();
+  heartbeat();
+  setInterval(heartbeat, 60 * 1000);
+  if (!state.welcomed) openModal('modal-welcome');
+  window.addEventListener('resize', () => { fitCanvas(); });
+  if (tg && tg.onEvent) {
+    try { tg.onEvent('viewportChanged', () => fitCanvas()); } catch (e) {}
+  }
+  requestAnimationFrame(tick);
+}
+
+boot();
+</script>
+</body>
+</html>

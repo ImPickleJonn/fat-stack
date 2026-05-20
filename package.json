@@ -1,0 +1,16 @@
+{
+  "name": "fat-stack",
+  "version": "0.1.0",
+  "description": "Fat Stack — Block Blast Telegram Mini App. Stars IAP only, no ads.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  }
+}

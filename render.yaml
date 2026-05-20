@@ -1,0 +1,40 @@
+# Render Blueprint for Fat Stack.
+#
+# How to use:
+#   1. Sign in at https://render.com and connect your GitHub account
+#      (so Render can pull from your fat-stack repo).
+#   2. Render dashboard → "New +" → "Blueprint" → pick this repo.
+#   3. Render reads this file, provisions a web service, starts the first build.
+#   4. After the service is up, set BOT_TOKEN manually in the Render dashboard
+#      (marked sync: false so the Blueprint never tries to commit secrets).
+#   5. Once the service has a URL (something like fat-stack-XXXX.onrender.com),
+#      flip the Telegram bot webhook to point at it:
+#         curl -X POST https://<your-url>/api/setup-webhook -H "x-setup-key: <BOT_TOKEN>"
+#
+# Same shape as Match Icon's render.yaml — single web service, no DB
+# (Fat Stack v0.2 stores state in browser localStorage; the server only
+# handles money + notifications).
+services:
+  - type: web
+    name: fat-stack
+    runtime: node
+    plan: starter              # $7/mo, no sleep. Fine for v0.2.
+    region: oregon             # Change to "frankfurt" or "singapore" for RU/EU/APAC audiences.
+    branch: main
+    autoDeploy: true
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/flags
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PUBLIC_DOMAIN
+        # Render auto-populates with the service's own .onrender.com hostname.
+        # server.js reads this to build the Telegram webhook URL and the
+        # play-now buttons in notifications.
+        fromService:
+          type: web
+          name: fat-stack
+          property: host
+      - key: BOT_TOKEN
+        sync: false            # set manually in dashboard — secret
