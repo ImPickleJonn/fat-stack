@@ -262,27 +262,6 @@ select {
   text-shadow: 0 0 24px var(--accent), 0 4px 0 var(--accent-dark);
   opacity: 0;
 }
-.loss-banner {
-  position: fixed; left: 50%; top: 38%;
-  transform: translate(-50%, -50%);
-  pointer-events: none; z-index: 60;
-  font-size: 38px; font-weight: 900;
-  color: #ffffff;
-  background: var(--danger);
-  padding: 12px 24px;
-  border-radius: 16px;
-  box-shadow: 0 6px 0 #b8324f, 0 12px 32px rgba(239,71,111,0.45);
-  opacity: 0;
-  text-align: center;
-  white-space: nowrap;
-  max-width: 92vw;
-}
-.loss-banner.show { animation: lossBannerIn 700ms cubic-bezier(.18,1.2,.4,1) forwards; }
-@keyframes lossBannerIn {
-  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-4deg); }
-  60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(2deg); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1.0) rotate(0); }
-}
 .combo-flash.show { animation: comboFlash 900ms cubic-bezier(.18,1,.27,1) forwards; }
 @keyframes comboFlash {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-6deg); }
@@ -984,7 +963,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 </div>
 
 <div class="combo-flash" id="combo-flash"></div>
-<div class="loss-banner" id="loss-banner"></div>
 <div class="toast" id="toast"></div>
 <div class="shop-loader" id="shop-loader">
   <div class="spinner"></div>
@@ -1689,7 +1667,6 @@ const STRINGS = {
     stat_gemsTotal: 'Gems',
     stat_achs: 'Achievements',
     stat_rankBest: 'Best Rank',
-    nowhereToStack: 'Nowhere to stack!',
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -1840,7 +1817,6 @@ const STRINGS = {
     stat_gemsTotal: 'Гемы',
     stat_achs: 'Достижений',
     stat_rankBest: 'Лучший ранг',
-    nowhereToStack: 'Некуда складывать!',
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -2610,24 +2586,59 @@ function drawBoard() {
       drawTile(ox + x * CELL, oy + y * CELL, CELL, v, scale, alpha);
     }
   }
-  // Loss freeze — paint every EMPTY cell red so the player sees at a glance
-  // there's no space anywhere. Filled cells keep their original color so the
-  // contrast tells the story by itself.
-  if (state.lossDemo) {
-    for (let y = 0; y < GRID; y++) {
-      for (let x = 0; x < GRID; x++) {
-        if (state.board[y][x] >= 0) continue;
-        const cx = ox + x * CELL;
-        const cy = oy + y * CELL;
+  // Loss-demo overlay — shows the current piece's "least-bad attempt" on
+  // the board with conflict cells (cells where the piece would overlap an
+  // existing tile) flashing bright red with white X marks. Makes losses
+  // feel earned: the player sees the piece try a spot and visibly fail.
+  if (state.lossDemo && state.lossDemo.phase === 'piece') {
+    const cur = state.lossDemo.pieces[state.lossDemo.currentIdx];
+    if (cur) {
+      const ageMs = Date.now() - state.lossDemo.phaseStart;
+      const pulse = 0.5 + 0.5 * Math.sin(ageMs / 60);
+      // Red ghost piece in the attempt position.
+      for (const [gx, gy] of cur.cells) {
+        if (gx < 0 || gx >= GRID || gy < 0 || gy >= GRID) continue;
+        const cx = ox + gx * CELL;
+        const cy = oy + gy * CELL;
         ctx.save();
+        ctx.globalAlpha = 0.35 + 0.35 * pulse;
         ctx.fillStyle = cssVar('--danger');
-        ctx.globalAlpha = 0.55;
-        const inset = Math.max(2, CELL * 0.06);
-        drawRoundedRect(cx + inset, cy + inset, CELL - inset * 2, CELL - inset * 2, CELL * 0.14);
+        const inset = Math.max(2, CELL * 0.08);
+        drawRoundedRect(cx + inset, cy + inset, CELL - inset * 2, CELL - inset * 2, CELL * 0.16);
         ctx.fill();
         ctx.restore();
       }
+      // White X over each conflict cell — these are the cells the piece
+      // would crash into. Pulse + thick lines so it reads at a glance.
+      for (const [gx, gy] of cur.conflictCells) {
+        const cx = ox + gx * CELL;
+        const cy = oy + gy * CELL;
+        ctx.save();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(3, CELL * 0.08);
+        ctx.globalAlpha = 0.65 + 0.35 * pulse;
+        ctx.lineCap = 'round';
+        const pad = CELL * 0.28;
+        ctx.beginPath();
+        ctx.moveTo(cx + pad, cy + pad);
+        ctx.lineTo(cx + CELL - pad, cy + CELL - pad);
+        ctx.moveTo(cx + CELL - pad, cy + pad);
+        ctx.lineTo(cx + pad, cy + CELL - pad);
+        ctx.stroke();
+        ctx.restore();
+      }
     }
+  }
+  // Final red-flash phase — full-board red overlay fading out, sells the
+  // "game over" beat right before the modal opens.
+  if (state.lossDemo && state.lossDemo.phase === 'flash') {
+    const ageMs = Date.now() - state.lossDemo.phaseStart;
+    const a = Math.max(0, 0.55 - ageMs / 900);
+    ctx.save();
+    ctx.fillStyle = cssVar('--danger');
+    ctx.globalAlpha = a;
+    ctx.fillRect(ox, oy, BOARD_PX, BOARD_PX);
+    ctx.restore();
   }
   // Hint overlay — pulsing golden outline over the best placement.
   if (state.hintActive) {
@@ -2659,43 +2670,46 @@ function drawBoard() {
 
 function drawTray() {
   const slotW = CSS_W / TRAY;
-  // During loss freeze, every unused piece gets a static red-tinted X.
-  const lossFreeze = !!state.lossDemo;
+  // Loss-demo per-piece animation state (read each frame, applied below).
+  const lossCurIdx = (state.lossDemo && state.lossDemo.phase === 'piece')
+    ? state.lossDemo.pieces[state.lossDemo.currentIdx].slotIdx
+    : -1;
+  const lossAge = lossCurIdx >= 0 ? (Date.now() - state.lossDemo.phaseStart) : 0;
+  const lossPulse = lossCurIdx >= 0 ? (0.5 + 0.5 * Math.sin(lossAge / 60)) : 0;
   for (let i = 0; i < TRAY; i++) {
     const slot = state.tray[i];
     if (!slot || slot.used) continue;
     // Skip drawing the slot if it's being dragged from
     if (state.drag && state.drag.slotIdx === i) continue;
-    const cx = i * slotW + slotW / 2;
+    let cx = i * slotW + slotW / 2;
     const cy = TRAY_Y + TRAY_H / 2;
-    if (lossFreeze) {
-      // Dim red halo behind the piece — static, no pulse.
+    // Current loss-demo piece — shake + red glow + X overlay.
+    if (i === lossCurIdx) {
+      cx += Math.sin(lossAge / 28) * 4;  // jiggle
+      // Red halo behind the piece.
       ctx.save();
-      ctx.globalAlpha = 0.35;
+      ctx.globalAlpha = 0.35 + 0.4 * lossPulse;
       ctx.fillStyle = cssVar('--danger');
       ctx.beginPath();
-      ctx.arc(cx, cy, TRAY_CELL * 2.2, 0, Math.PI * 2);
+      ctx.arc(cx, cy, TRAY_CELL * 2.4, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
     drawShape(cx, cy, slot.shape, slot.colorIdx, TRAY_CELL);
-    if (lossFreeze) {
-      // Single static red X stamped on top.
+    // X overlay on top of the loss-demo piece, drawn AFTER the piece so it's
+    // unmistakable as a "rejected" indicator.
+    if (i === lossCurIdx) {
       ctx.save();
-      ctx.strokeStyle = cssVar('--danger');
-      ctx.lineWidth = 6;
-      ctx.lineCap = 'round';
-      const r = TRAY_CELL * 1.6;
-      ctx.beginPath();
-      ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
-      ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
-      ctx.stroke();
-      // White inner stroke for contrast over the colored piece.
       ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2.5;
+      ctx.lineWidth = 5;
+      ctx.globalAlpha = 0.6 + 0.4 * lossPulse;
+      ctx.lineCap = 'round';
+      const r = TRAY_CELL * 1.5;
       ctx.beginPath();
-      ctx.moveTo(cx - r, cy - r); ctx.lineTo(cx + r, cy + r);
-      ctx.moveTo(cx + r, cy - r); ctx.lineTo(cx - r, cy + r);
+      ctx.moveTo(cx - r, cy - r);
+      ctx.lineTo(cx + r, cy + r);
+      ctx.moveTo(cx + r, cy - r);
+      ctx.lineTo(cx - r, cy + r);
       ctx.stroke();
       ctx.restore();
     }
@@ -2927,42 +2941,52 @@ function checkGameOver() {
   return true;
 }
 
-// Loss-state freeze. Single phase: paint all empty cells red, drop a static
-// X on every unused tray piece, fade in a "Nowhere to stack!" banner, then
-// after FREEZE_MS hand off to the modal. No sequential demo, no continuous
-// shake — settles into a clear final state and gets out of the way.
-function startLossDemo(onDone) {
-  // Compose the list of unused tray slot indices so drawTray knows which
-  // pieces to mark with the X. Stays static for the whole freeze.
-  const unusedSlots = [];
+// Build the per-piece "least-bad attempt" used by the loss-demo animation.
+// For each unused tray piece, find the in-bounds position with the FEWEST
+// overlapping cells (every position has at least one overlap, otherwise the
+// piece would fit and we wouldn't be here). The animation shows that
+// attempt with conflict cells flashing red so the player sees WHY the run
+// ended — no surprises.
+function buildLossDemoAttempts() {
+  const pieces = [];
   for (let i = 0; i < state.tray.length; i++) {
-    if (state.tray[i] && !state.tray[i].used) unusedSlots.push(i);
+    const slot = state.tray[i];
+    if (!slot || slot.used) continue;
+    const box = shapeBox(slot.shape);
+    let best = null;
+    for (let y = 0; y <= GRID - box.h; y++) {
+      for (let x = 0; x <= GRID - box.w; x++) {
+        let overlap = 0;
+        for (const [dx, dy] of slot.shape.cells) {
+          if (state.board[y + dy][x + dx] >= 0) overlap++;
+        }
+        if (overlap > 0 && (!best || overlap < best.overlap)) {
+          best = { gx: x, gy: y, overlap };
+        }
+      }
+    }
+    // Fallback for pieces too big to even fit the board's bounding box —
+    // anchor at (0,0) so the demo still has something to show.
+    if (!best) best = { gx: 0, gy: 0, overlap: 0 };
+    const cells = slot.shape.cells.map(([dx, dy]) => [best.gx + dx, best.gy + dy]);
+    const conflictCells = cells.filter(([x, y]) =>
+      x >= 0 && x < GRID && y >= 0 && y < GRID && state.board[y][x] >= 0
+    );
+    pieces.push({ slotIdx: i, slot, gx: best.gx, gy: best.gy, cells, conflictCells });
   }
+  return pieces;
+}
+
+function startLossDemo(onDone) {
+  const pieces = buildLossDemoAttempts();
+  if (pieces.length === 0) { onDone && onDone(); return; }
   state.lossDemo = {
-    unusedSlots,
-    phaseStart: Date.now(),
+    pieces, currentIdx: 0,
+    phase: 'piece', phaseStart: Date.now(),
     onDone: onDone || null,
   };
-  // Show the banner.
-  const banner = document.getElementById('loss-banner');
-  if (banner) {
-    banner.textContent = t('nowhereToStack');
-    banner.classList.remove('show');
-    void banner.offsetWidth;          // restart animation
-    banner.classList.add('show');
-  }
-  sfx('gameover');
-  TG.haptic('error');
-  // Hand off to modal after the freeze window completes.
-  setTimeout(() => {
-    if (state.lossDemo) {
-      const cb = state.lossDemo.onDone;
-      state.lossDemo = null;
-      // Fade out banner so the modal isn't fighting for attention.
-      if (banner) banner.classList.remove('show');
-      if (cb) cb();
-    }
-  }, 1600);
+  sfx('invalid');
+  TG.haptic('warning');
 }
 
 // ============================================================
@@ -3173,7 +3197,29 @@ function tick(now) {
     state.hintExpiresAt = 0;
     updateInventoryPills();
   }
-  // Loss freeze handled by setTimeout in startLossDemo; no per-frame work here.
+  // Loss-demo state machine. Each unused tray piece gets PIECE_MS of stage
+  // time showing its best-attempt + conflict overlay; then a brief full-
+  // board red flash; then onDone fires and showGameOverResult opens the modal.
+  if (state.lossDemo) {
+    const PIECE_MS = 750;
+    const FLASH_MS = 450;
+    const elapsed = now - state.lossDemo.phaseStart;
+    if (state.lossDemo.phase === 'piece' && elapsed >= PIECE_MS) {
+      state.lossDemo.currentIdx++;
+      state.lossDemo.phaseStart = now;
+      if (state.lossDemo.currentIdx >= state.lossDemo.pieces.length) {
+        state.lossDemo.phase = 'flash';
+        state.shake = 10;
+      } else {
+        sfx('invalid');
+        TG.haptic('warning');
+      }
+    } else if (state.lossDemo.phase === 'flash' && elapsed >= FLASH_MS) {
+      const onDone = state.lossDemo.onDone;
+      state.lossDemo = null;
+      if (onDone) onDone();
+    }
+  }
   drawAll();
   drawMascotTab();
   requestAnimationFrame(tick);
