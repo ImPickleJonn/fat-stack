@@ -374,8 +374,10 @@ select {
   text-align: center;
   white-space: nowrap;
   max-width: 92vw;
+  transition: opacity 320ms ease-out;
 }
 .loss-banner.show { animation: lossBannerIn 700ms cubic-bezier(.18,1.2,.4,1) forwards; }
+.loss-banner.fade-out { animation: none; opacity: 0; }
 @keyframes lossBannerIn {
   0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(-4deg); }
   60%  { opacity: 1; transform: translate(-50%, -50%) scale(1.08) rotate(2deg); }
@@ -3147,16 +3149,24 @@ function startLossDemo(onDone) {
   }
   sfx('gameover');
   TG.haptic('error');
-  // Hand off to modal after the freeze window completes.
+  // Freeze window: 3.2s so players can take in the red empty cells, the red
+  // Xs on each piece, and the banner before the modal opens. Banner fades
+  // out over the last 320ms via a CSS opacity transition (no sharp cut).
+  const FREEZE_MS = 3200;
+  setTimeout(() => {
+    if (banner) banner.classList.add('fade-out');
+  }, FREEZE_MS - 320);
   setTimeout(() => {
     if (state.lossDemo) {
       const cb = state.lossDemo.onDone;
       state.lossDemo = null;
-      // Fade out banner so the modal isn't fighting for attention.
-      if (banner) banner.classList.remove('show');
+      if (banner) {
+        banner.classList.remove('show');
+        banner.classList.remove('fade-out');
+      }
       if (cb) cb();
     }
-  }, 1600);
+  }, FREEZE_MS);
 }
 
 // ============================================================
