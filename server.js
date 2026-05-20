@@ -11,6 +11,30 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const TELEGRAM_API = BOT_TOKEN ? `https://api.telegram.org/bot${BOT_TOKEN}` : null;
+
+// Purchase notification → shared pickle-notif-bot. No-op unless both env vars
+// are set, so this is safe to deploy before the notif bot exists.
+const NOTIF_BOT_URL = process.env.NOTIF_BOT_URL || '';
+const NOTIF_SECRET  = process.env.NOTIF_SECRET || '';
+const NOTIF_GAME_ID = 'fat_stack';
+function notifyPurchase(info) {
+  if (!NOTIF_BOT_URL || !NOTIF_SECRET) return;
+  try {
+    fetch(NOTIF_BOT_URL.replace(/\/+$/, '') + '/api/purchase', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notif-key': NOTIF_SECRET },
+      body: JSON.stringify({
+        game: NOTIF_GAME_ID,
+        sku: info.sku,
+        stars: info.stars,
+        userId: info.userId,
+        username: info.username,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  } catch (_e) {}
+}
+
 // Deterministic secret derived from BOT_TOKEN so /api/setup-webhook can
 // register it with Telegram and the webhook handler can verify the same
 // value back. Anyone with the bot token can compute this (acceptable).
@@ -963,6 +987,12 @@ app.post('/api/telegram-webhook', async (req, res) => {
         const payload = JSON.parse(sp.invoice_payload);
         if (payload && payload.uid && SKUS[payload.sku]) {
           pushPending(payload.uid, payload.sku);
+          notifyPurchase({
+            sku: payload.sku,
+            stars: sp.total_amount || (SKUS[payload.sku] && SKUS[payload.sku].price) || 0,
+            userId: payload.uid,
+            username: update.message.from && update.message.from.username,
+          });
         }
       } catch (e) { /* malformed payload — ignore */ }
     } else if (update.message && update.message.text === '/start') {
