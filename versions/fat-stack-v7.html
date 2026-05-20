@@ -641,73 +641,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
   text-align: center; font-size: 26px; font-weight: 900;
   color: var(--accent-dark); margin-bottom: 8px;
 }
-
-/* Achievements grid */
-.ach-banner {
-  background: linear-gradient(135deg, #FFD166, #FF6B35);
-  border-radius: 14px; padding: 12px 14px;
-  display: flex; align-items: center; gap: 10px;
-  margin-bottom: 12px; box-shadow: 0 3px 0 var(--accent-dark);
-  cursor: pointer; transition: transform 80ms;
-}
-.ach-banner:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--accent-dark); }
-.ach-banner .a-icon { font-size: 28px; }
-.ach-banner .a-body { flex: 1; }
-.ach-banner .a-title { font-size: 14px; font-weight: 900; color: var(--text); }
-.ach-banner .a-sub { font-size: 11px; color: var(--text); opacity: 0.78; }
-.ach-banner .a-arrow { font-size: 22px; color: var(--text); opacity: 0.8; }
-
-.ach-grid {
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
-  max-height: 60vh; overflow-y: auto;
-}
-.ach-card {
-  background: var(--board-bg); border-radius: 12px;
-  padding: 8px 4px; text-align: center;
-  box-shadow: 0 2px 0 var(--shadow);
-  position: relative;
-}
-.ach-card.locked { opacity: 0.45; filter: grayscale(70%); }
-.ach-card.unlocked { background: linear-gradient(135deg, var(--gold), var(--accent)); }
-.ach-card .ac-icon { font-size: 28px; line-height: 1; margin-bottom: 4px; }
-.ach-card .ac-name {
-  font-size: 9px; font-weight: 800; color: var(--text); line-height: 1.15;
-  height: 24px; overflow: hidden;
-}
-.ach-card .ac-reward {
-  font-size: 10px; font-weight: 900; color: var(--accent-dark);
-  margin-top: 2px;
-}
-.ach-card.unlocked .ac-reward { color: var(--text); opacity: 0.85; }
-.ach-card.unlocked::after {
-  content: '✓'; position: absolute; top: 2px; right: 4px;
-  font-size: 12px; font-weight: 900; color: var(--text);
-}
-
-/* Tournament card in leaderboard modal */
-.lb-tabs-row { display: flex; gap: 6px; margin-bottom: 12px; }
-.lb-tabs-row .lb-tab { flex: 1; padding: 10px; margin: 0; font-size: 12px; }
-.tournament-header {
-  background: linear-gradient(135deg, #9D4EDD, #FFB100);
-  border-radius: 12px; padding: 12px;
-  text-align: center; margin-bottom: 10px;
-  box-shadow: 0 3px 0 var(--shadow);
-}
-.tournament-header .t-title { font-size: 14px; font-weight: 900; color: white; }
-.tournament-header .t-countdown {
-  font-size: 22px; font-weight: 900; color: white;
-  font-variant-numeric: tabular-nums;
-  margin: 4px 0;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-}
-.tournament-header .t-prizes {
-  font-size: 11px; color: white; opacity: 0.9;
-}
-
-/* Tournament prize celebration modal */
-.t-prize-card .icon { font-size: 80px; margin: 8px 0; animation: celebrateBounce 600ms cubic-bezier(.18,1.2,.4,1) both; }
-.t-prize-card .rank { font-size: 18px; font-weight: 900; color: var(--text-soft); }
-.t-prize-card .amount { font-size: 40px; font-weight: 900; color: var(--accent-dark); margin: 4px 0; }
 </style>
 </head>
 <body>
@@ -773,14 +706,6 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
       </div>
       <div class="chest-days" id="chest-days"></div>
       <button class="chest-btn" id="chest-btn" data-action="claim-chest" data-i18n="chestClaim">Claim today</button>
-    </div>
-    <div class="ach-banner" data-action="open-achievements">
-      <div class="a-icon">🏅</div>
-      <div class="a-body">
-        <div class="a-title" data-i18n="achTitle">Achievements</div>
-        <div class="a-sub" id="ach-banner-sub">— / 33</div>
-      </div>
-      <div class="a-arrow">›</div>
     </div>
     <div class="spin-card">
       <div class="s-title" data-i18n="spinTitle">Daily Spin</div>
@@ -883,48 +808,13 @@ a { color: var(--accent-dark); text-decoration: none; font-weight: 700; }
 <div class="modal-bg" id="modal-leaderboard">
   <div class="modal" style="max-width:420px;">
     <h2 data-i18n="leaderboard">Leaderboard</h2>
-    <div class="lb-tabs-row">
-      <button class="btn secondary lb-tab active" data-lb-mode="regular"><span data-i18n="lbAllTime">All-Time</span></button>
-      <button class="btn secondary lb-tab" data-lb-mode="daily"><span data-i18n="lbToday">Today</span></button>
-      <button class="btn secondary lb-tab" data-lb-mode="tournament"><span data-i18n="lbTournament">Week</span></button>
+    <div style="display:flex; gap:6px; margin-bottom:12px;">
+      <button class="btn secondary lb-tab active" data-lb-mode="regular" style="margin:0; flex:1; padding:10px;"><span data-i18n="lbAllTime">All-Time</span></button>
+      <button class="btn secondary lb-tab" data-lb-mode="daily" style="margin:0; flex:1; padding:10px;"><span data-i18n="lbToday">Today</span></button>
     </div>
-    <div id="lb-tournament-header"></div>
-    <div id="lb-list" style="max-height:48vh; overflow-y:auto;"></div>
+    <div id="lb-list" style="max-height:50vh; overflow-y:auto;"></div>
     <div id="lb-my-rank" style="text-align:center; margin:10px 0; font-weight:800; color:var(--accent-dark);"></div>
     <button class="btn secondary" data-action="close-modal" data-i18n="close">Close</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-achievements">
-  <div class="modal" style="max-width:420px;">
-    <h2 data-i18n="achTitle">Achievements</h2>
-    <p class="sub" id="ach-modal-sub">— / 33</p>
-    <div class="ach-grid" id="ach-grid"></div>
-    <button class="btn secondary" data-action="close-modal" data-i18n="close" style="margin-top:12px;">Close</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-ach-unlock">
-  <div class="modal">
-    <div style="text-align:center;">
-      <div style="font-size:64px; line-height:1; animation: celebrateBounce 600ms cubic-bezier(.18,1.2,.4,1) both;" id="ach-unlock-icon">🏅</div>
-      <h2 style="margin:6px 0 4px;" data-i18n="achUnlocked">Achievement Unlocked!</h2>
-      <div style="font-size:18px; font-weight:900; margin-bottom:8px;" id="ach-unlock-name">—</div>
-      <div style="font-size:24px; font-weight:900; color:var(--accent-dark);" id="ach-unlock-reward">+0 💎</div>
-    </div>
-    <button class="btn" data-action="ach-unlock-next" style="margin-top:16px;" data-i18n="awesome">Awesome!</button>
-  </div>
-</div>
-
-<div class="modal-bg" id="modal-tournament-prize">
-  <div class="modal">
-    <div class="t-prize-card" style="text-align:center;">
-      <div class="icon" id="tp-icon">🏆</div>
-      <h2 data-i18n="tournamentWon" style="margin:0;">Tournament Prize!</h2>
-      <div class="rank" id="tp-rank">—</div>
-      <div class="amount" id="tp-amount">— 💎</div>
-    </div>
-    <button class="btn" data-action="close-modal" data-i18n="awesome">Awesome!</button>
   </div>
 </div>
 
@@ -990,60 +880,13 @@ const SKUS = {
   skin_neon:    { id: 'skin_neon',    price: 150, emoji: '🌈', tKey: 'skuSkinNeon' },
   skin_wood:    { id: 'skin_wood',    price: 150, emoji: '🪵', tKey: 'skuSkinWood' },
   battle_pass:  { id: 'battle_pass',  price: 500, emoji: '🎖', tKey: 'skuBattlePass' },
-  streak_shield:{ id: 'streak_shield',price: 99,  emoji: '🛟', tKey: 'skuStreakShield' },
   test_purchase:{ id: 'test_purchase',price: 1,   emoji: '🧪', tKey: 'skuTestPurchase', adminOnly: true },
 };
 
-const SHOP_ORDER = ['starter_pack', 'revive', 'streak_shield', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass', 'test_purchase'];
+const SHOP_ORDER = ['starter_pack', 'revive', 'hint_pack', 'no_bust', 'gems_small', 'gems_big', 'gems_mega', 'skin_neon', 'skin_wood', 'battle_pass', 'test_purchase'];
 
 // Daily login chest — 7-day cycle, escalating rewards in gems.
 const CHEST_REWARDS = [25, 50, 75, 100, 150, 250, 500];
-
-// Achievements — 33 unlockable milestones. Each has a check() that runs
-// every time relevant state changes (game-over, streak update, share, etc.).
-// On first true-result, the achievement unlocks + grants gems.
-const ACHIEVEMENTS = [
-  // Score (6)
-  { id: 'score_1k',   icon: '🌟', tKey: 'achScore1k',   reward: 50,   check: () => state.best >= 1000 },
-  { id: 'score_5k',   icon: '⭐', tKey: 'achScore5k',   reward: 100,  check: () => state.best >= 5000 },
-  { id: 'score_10k',  icon: '✨', tKey: 'achScore10k',  reward: 200,  check: () => state.best >= 10000 },
-  { id: 'score_25k',  icon: '🌠', tKey: 'achScore25k',  reward: 400,  check: () => state.best >= 25000 },
-  { id: 'score_50k',  icon: '💫', tKey: 'achScore50k',  reward: 800,  check: () => state.best >= 50000 },
-  { id: 'score_100k', icon: '🏆', tKey: 'achScore100k', reward: 2000, check: () => state.best >= 100000 },
-  // Streaks (5)
-  { id: 'streak_3',   icon: '🔥', tKey: 'achStreak3',   reward: 75,   check: () => state.streak >= 3 },
-  { id: 'streak_7',   icon: '🔥', tKey: 'achStreak7',   reward: 200,  check: () => state.streak >= 7 },
-  { id: 'streak_14',  icon: '🔥', tKey: 'achStreak14',  reward: 500,  check: () => state.streak >= 14 },
-  { id: 'streak_30',  icon: '🔥', tKey: 'achStreak30',  reward: 1500, check: () => state.streak >= 30 },
-  { id: 'streak_100', icon: '🔥', tKey: 'achStreak100', reward: 5000, check: () => state.streak >= 100 },
-  // Lines (5) — cumulative across all runs
-  { id: 'lines_100',   icon: '📏', tKey: 'achLines100',   reward: 50,   check: () => (state.totalLinesEver || 0) >= 100 },
-  { id: 'lines_500',   icon: '📐', tKey: 'achLines500',   reward: 200,  check: () => (state.totalLinesEver || 0) >= 500 },
-  { id: 'lines_1000',  icon: '📊', tKey: 'achLines1000',  reward: 500,  check: () => (state.totalLinesEver || 0) >= 1000 },
-  { id: 'lines_5000',  icon: '📈', tKey: 'achLines5000',  reward: 1500, check: () => (state.totalLinesEver || 0) >= 5000 },
-  { id: 'lines_10000', icon: '📉', tKey: 'achLines10000', reward: 3000, check: () => (state.totalLinesEver || 0) >= 10000 },
-  // Combos (4) — best lines-in-one-placement + best consecutive combo chain
-  { id: 'combo_2',        icon: '💥', tKey: 'achCombo2',       reward: 50,   check: () => (state.bestComboEver || 0) >= 2 },
-  { id: 'combo_3',        icon: '💢', tKey: 'achCombo3',       reward: 150,  check: () => (state.bestComboEver || 0) >= 3 },
-  { id: 'combo_4',        icon: '⚡', tKey: 'achCombo4',       reward: 400,  check: () => (state.bestComboEver || 0) >= 4 },
-  { id: 'combo_chain_10', icon: '🌪', tKey: 'achComboChain10', reward: 800,  check: () => (state.bestComboChainEver || 0) >= 10 },
-  // Games played (5)
-  { id: 'games_10',   icon: '🎮', tKey: 'achGames10',   reward: 50,   check: () => (state.totalGamesEver || 0) >= 10 },
-  { id: 'games_50',   icon: '🎮', tKey: 'achGames50',   reward: 200,  check: () => (state.totalGamesEver || 0) >= 50 },
-  { id: 'games_100',  icon: '🎮', tKey: 'achGames100',  reward: 500,  check: () => (state.totalGamesEver || 0) >= 100 },
-  { id: 'games_500',  icon: '🎮', tKey: 'achGames500',  reward: 1500, check: () => (state.totalGamesEver || 0) >= 500 },
-  { id: 'games_1000', icon: '🎮', tKey: 'achGames1000', reward: 3000, check: () => (state.totalGamesEver || 0) >= 1000 },
-  // Skins (3)
-  { id: 'skin_wood', icon: '🪵', tKey: 'achSkinWood', reward: 200,  check: () => state.skins.includes('wood') },
-  { id: 'skin_neon', icon: '🌈', tKey: 'achSkinNeon', reward: 200,  check: () => state.skins.includes('neon') },
-  { id: 'skin_all',  icon: '🎨', tKey: 'achSkinAll',  reward: 1000, check: () => state.skins.includes('wood') && state.skins.includes('neon') },
-  // Misc / collection (5)
-  { id: 'first_iap',    icon: '⭐', tKey: 'achFirstIap',    reward: 100, check: () => (state.totalIapsEver || 0) >= 1 },
-  { id: 'first_daily',  icon: '🎯', tKey: 'achFirstDaily',  reward: 100, check: () => state.lastDailyYMD !== '' },
-  { id: 'first_top100', icon: '🥇', tKey: 'achFirstTop100', reward: 200, check: () => (state.bestLeaderboardRankEver || 0) > 0 && state.bestLeaderboardRankEver <= 100 },
-  { id: 'first_spin',   icon: '🎰', tKey: 'achFirstSpin',   reward: 50,  check: () => state.spinClaimedYMD !== '' },
-  { id: 'first_share',  icon: '🤝', tKey: 'achFirstShare',  reward: 50,  check: () => (state.totalSharesEver || 0) >= 1 },
-];
 
 // Daily Spin Wheel — one free spin per UTC day. 8 weighted segments.
 // Higher-value rewards are rare to keep the dopamine right; the wheel
@@ -1146,20 +989,6 @@ const state = {
   // Daily Spin Wheel
   spinClaimedYMD: '',            // YMD of last free spin
   lastSpinResult: null,          // { segId, label } — most recent result, for the Earn tile
-  // Lifetime counters — drive most achievements + Mixpanel dimensions.
-  totalLinesEver: 0,
-  totalGamesEver: 0,
-  totalIapsEver: 0,
-  totalSharesEver: 0,
-  bestComboEver: 0,              // best lines-in-one-placement
-  bestComboChainEver: 0,         // best consecutive combo count
-  bestLeaderboardRankEver: 0,    // best all-time rank we ever observed
-  // Achievements: { [id]: { unlocked: true, ts } }
-  achievements: {},
-  // Streak Shield insurance (in days).
-  shieldDays: 0,
-  // Tournament — last seen state so we know when prizes arrive.
-  lastSeenTournamentId: '',
   settings: {
     sound: true,
     haptics: true,
@@ -1378,56 +1207,6 @@ const STRINGS = {
     openingShop: 'Opening Stars checkout…',
     newScore: 'I JUST SCORED',
     shareCardCta: 'BEAT MY SCORE 👉',
-    skuStreakShield: 'Streak Shield',
-    shieldSaved: '🛟 Shield saved your streak ({days}d used)',
-    achTitle: 'Achievements',
-    achUnlocked: 'Achievement Unlocked!',
-    unlocked: 'unlocked',
-    lbTournament: 'Week',
-    closed: 'CLOSED',
-    totalPool: 'POOL',
-    tournamentWon: 'Tournament Prize!',
-    rankN: 'Rank #{n}',
-    // Score
-    achScore1k: 'Stacker · 1k score',
-    achScore5k: 'Pro Stacker · 5k score',
-    achScore10k: 'Block Boss · 10k score',
-    achScore25k: 'Stack Master · 25k score',
-    achScore50k: 'Legend · 50k score',
-    achScore100k: 'Mythic · 100k score',
-    // Streaks
-    achStreak3: '3-Day Streak',
-    achStreak7: '7-Day Streak',
-    achStreak14: '2-Week Streak',
-    achStreak30: 'Monthly Streak',
-    achStreak100: 'Centurion · 100 days',
-    // Lines
-    achLines100: '100 Lines Cleared',
-    achLines500: '500 Lines Cleared',
-    achLines1000: '1,000 Lines',
-    achLines5000: '5,000 Lines',
-    achLines10000: '10,000 Lines',
-    // Combos
-    achCombo2: 'Double Clear',
-    achCombo3: 'Triple Clear',
-    achCombo4: 'Quad Clear',
-    achComboChain10: '10-Chain Combo',
-    // Games played
-    achGames10: '10 Games',
-    achGames50: '50 Games',
-    achGames100: '100 Games',
-    achGames500: '500 Games',
-    achGames1000: 'Veteran · 1,000 Games',
-    // Skins
-    achSkinWood: 'Wood Style',
-    achSkinNeon: 'Neon Style',
-    achSkinAll: 'Style Collector',
-    // Misc
-    achFirstIap: 'Supporter · First Purchase',
-    achFirstDaily: 'Daily Dabbler',
-    achFirstTop100: 'Top 100',
-    achFirstSpin: 'Spinner',
-    achFirstShare: 'Word of Mouth',
   },
   ru: {
     score: 'Очки', best: 'Рекорд', streak: 'Серия',
@@ -1513,56 +1292,6 @@ const STRINGS = {
     openingShop: 'Открываю оплату Stars…',
     newScore: 'МОЙ СЧЁТ',
     shareCardCta: 'ПОБЕЙ МОЙ СЧЁТ 👉',
-    skuStreakShield: 'Защита серии',
-    shieldSaved: '🛟 Защита спасла серию ({days}д использовано)',
-    achTitle: 'Достижения',
-    achUnlocked: 'Достижение открыто!',
-    unlocked: 'открыто',
-    lbTournament: 'Неделя',
-    closed: 'ЗАКРЫТО',
-    totalPool: 'ПРИЗОВОЙ',
-    tournamentWon: 'Турнирный приз!',
-    rankN: 'Место #{n}',
-    // Score
-    achScore1k: 'Стэкер · 1к очков',
-    achScore5k: 'Профи · 5к очков',
-    achScore10k: 'Босс блоков · 10к',
-    achScore25k: 'Мастер · 25к',
-    achScore50k: 'Легенда · 50к',
-    achScore100k: 'Мифик · 100к',
-    // Streaks
-    achStreak3: 'Серия 3 дня',
-    achStreak7: 'Серия 7 дней',
-    achStreak14: '2 недели подряд',
-    achStreak30: 'Месяц подряд',
-    achStreak100: 'Центурион · 100 дней',
-    // Lines
-    achLines100: '100 линий очищено',
-    achLines500: '500 линий',
-    achLines1000: '1 000 линий',
-    achLines5000: '5 000 линий',
-    achLines10000: '10 000 линий',
-    // Combos
-    achCombo2: 'Двойное очищение',
-    achCombo3: 'Тройное очищение',
-    achCombo4: 'Квадро-очищение',
-    achComboChain10: 'Цепочка из 10',
-    // Games played
-    achGames10: '10 игр',
-    achGames50: '50 игр',
-    achGames100: '100 игр',
-    achGames500: '500 игр',
-    achGames1000: 'Ветеран · 1 000 игр',
-    // Skins
-    achSkinWood: 'Деревянный стиль',
-    achSkinNeon: 'Неоновый стиль',
-    achSkinAll: 'Коллекционер',
-    // Misc
-    achFirstIap: 'Спонсор · Первая покупка',
-    achFirstDaily: 'Любитель ежедневок',
-    achFirstTop100: 'Топ 100',
-    achFirstSpin: 'Спиннер',
-    achFirstShare: 'Сарафанное радио',
   },
   ar: {
     score: 'النقاط', best: 'الأفضل', streak: 'سلسلة',
@@ -2824,10 +2553,7 @@ function placePieceAt(slot, gx, gy, slotIdx) {
     state.combo += 1;
     state.comboTimer = 1500;
     state.linesClearedThisGame = (state.linesClearedThisGame || 0) + totalLines;
-    state.totalLinesEver = (state.totalLinesEver || 0) + totalLines;
     if (state.combo > (state.maxComboThisGame || 0)) state.maxComboThisGame = state.combo;
-    if (totalLines > (state.bestComboEver || 0)) state.bestComboEver = totalLines;
-    if (state.combo > (state.bestComboChainEver || 0)) state.bestComboChainEver = state.combo;
     if (state.combo >= 2 || totalLines >= 2) {
       showComboFlash(state.combo, totalLines);
     }
@@ -3109,7 +2835,6 @@ function updateInventoryPills() {
     { id: 'revives', icon: '💖', count: state.revives, tappable: false },
     { id: 'hints',   icon: '💡', count: state.hints,   tappable: state.hints > 0, hot: state.hints > 0 && !state.hintActive, action: 'use-hint' },
     { id: 'no_bust', icon: '🛡', count: state.noBust,  tappable: false },
-    { id: 'shield',  icon: '🛟', count: state.shieldDays || 0, tappable: false },
   ];
   if (state.battlePassUntil && state.battlePassUntil > Date.now()) {
     const days = Math.ceil((state.battlePassUntil - Date.now()) / (24 * 60 * 60 * 1000));
@@ -3447,8 +3172,6 @@ function renderEarn() {
   // Spin wheel — paint + button state.
   drawSpinWheel();
   updateSpinUI();
-  // Achievements banner counter ("12 / 33 unlocked").
-  updateAchBannerSub();
   // Chest grid
   const day = chestDayForToday();
   const grid = document.getElementById('chest-days');
@@ -3535,12 +3258,6 @@ document.addEventListener('click', (e) => {
   else if (action === 'reset-progress') { openModal('modal-confirm-reset'); }
   else if (action === 'reset-confirm') { resetProgress(); }
   else if (action === 'lb-from-daily') { closeAllModals(); openLeaderboard('daily'); }
-  else if (action === 'open-achievements') { renderAchievementsModal(); openModal('modal-achievements'); }
-  else if (action === 'ach-unlock-next') {
-    closeAllModals();
-    if (__achQueue.length > 0) setTimeout(showNextAchievement, 200);
-    else __achShowing = false;
-  }
 });
 
 // Tab bar wiring
@@ -3713,7 +3430,6 @@ async function buySku(skuId) {
       state.buying = null;
       if (status === 'paid') {
         track('iap_purchase', { sku: skuId, stars: sku.price || 0 });
-        state.totalIapsEver = (state.totalIapsEver || 0) + 1;
         // Stash the SKU for the celebration modal — applied below.
         state.pendingCelebration = { skuId, sku };
         // Poll for grant.
@@ -3730,10 +3446,6 @@ async function buySku(skuId) {
               for (const p of pdata.purchases) applyGrant(p.grant);
               save();
               renderShop();
-              // Tournament-prize grants get their own celebration on top of
-              // the regular shop celebration (which still shows the SKU
-              // pills since the player just paid Stars).
-              maybeShowTournamentPrize();
               showCelebration(skuId, pdata.purchases[0].grant);
               return;
             }
@@ -3782,41 +3494,6 @@ function showCelebration(skuId, grant) {
   fireConfetti(80);
 }
 
-function maybeShowTournamentPrize() {
-  const p = state.pendingTournamentPrize;
-  if (!p) return;
-  state.pendingTournamentPrize = null;
-  document.getElementById('tp-icon').textContent = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '🏆';
-  document.getElementById('tp-rank').textContent = t('rankN', { n: p.rank }) + ' · ' + p.id;
-  document.getElementById('tp-amount').textContent = '+' + formatNum(p.prize) + ' 💎';
-  openModal('modal-tournament-prize');
-  TG.haptic('success');
-  sfx('combo');
-  fireConfetti(120);
-  save();
-  track('tournament_prize_claimed', { rank: p.rank, prize: p.prize, tournament_id: p.id });
-}
-
-// Also poll for pending prizes on app open (so winners discover them even
-// without making a new purchase). The poll endpoint drains the queue.
-async function pollPendingPrizes() {
-  const initData = TG.initData();
-  if (!initData) return;
-  try {
-    const r = await fetch('/api/poll-purchases', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-    });
-    const d = await r.json();
-    if (d && d.purchases && d.purchases.length) {
-      for (const p of d.purchases) applyGrant(p.grant);
-      save();
-      maybeShowTournamentPrize();
-    }
-  } catch (e) {}
-}
-
 function fireConfetti(count) {
   const layer = document.getElementById('confetti-layer');
   if (!layer) return;
@@ -3839,11 +3516,10 @@ function fireConfetti(count) {
 
 function applyGrant(grant) {
   if (!grant) return;
-  if (grant.gems)       state.gems       += grant.gems;
-  if (grant.revives)    state.revives    += grant.revives;
-  if (grant.hints)      state.hints      += grant.hints;
-  if (grant.noBust)     state.noBust     += grant.noBust;
-  if (grant.shieldDays) state.shieldDays  = (state.shieldDays || 0) + grant.shieldDays;
+  if (grant.gems)    state.gems    += grant.gems;
+  if (grant.revives) state.revives += grant.revives;
+  if (grant.hints)   state.hints   += grant.hints;
+  if (grant.noBust)  state.noBust  += grant.noBust;
   if (grant.skins) {
     for (const s of grant.skins) { if (!state.skins.includes(s)) state.skins.push(s); }
     // Auto-equip the newest skin so the buy is instantly visible.
@@ -3856,15 +3532,8 @@ function applyGrant(grant) {
     }
   }
   if (grant.battlePass) state.battlePassUntil = Math.max(state.battlePassUntil, Date.now() + grant.battlePass * 24 * 60 * 60 * 1000);
-  // Tournament prize — surface a special celebration. Apply gems above
-  // already credited; this is just for the wow-moment.
-  if (grant.tournamentPrize) {
-    state.pendingTournamentPrize = grant.tournamentPrize;
-  }
-  // Refresh inventory pills + shop tile state, then check achievements that
-  // might have flipped (skin_wood/neon/all, etc.).
+  // Refresh inventory pills + shop tile state.
   updateInventoryPills();
-  checkAchievements();
 }
 
 function tryRevive() {
@@ -3922,16 +3591,6 @@ function save() {
       dailyYMD: state.dailyYMD,
       spinClaimedYMD: state.spinClaimedYMD,
       lastSpinResult: state.lastSpinResult,
-      totalLinesEver: state.totalLinesEver,
-      totalGamesEver: state.totalGamesEver,
-      totalIapsEver: state.totalIapsEver,
-      totalSharesEver: state.totalSharesEver,
-      bestComboEver: state.bestComboEver,
-      bestComboChainEver: state.bestComboChainEver,
-      bestLeaderboardRankEver: state.bestLeaderboardRankEver,
-      achievements: state.achievements,
-      shieldDays: state.shieldDays,
-      lastSeenTournamentId: state.lastSeenTournamentId,
     };
     localStorage.setItem(STORE_KEY, JSON.stringify(snap));
   } catch (e) {}
@@ -3965,16 +3624,6 @@ function load() {
     if (s.activeTab) state.activeTab = s.activeTab;
     if (s.spinClaimedYMD) state.spinClaimedYMD = s.spinClaimedYMD;
     if (s.lastSpinResult && typeof s.lastSpinResult === 'object') state.lastSpinResult = s.lastSpinResult;
-    if (typeof s.totalLinesEver === 'number') state.totalLinesEver = s.totalLinesEver;
-    if (typeof s.totalGamesEver === 'number') state.totalGamesEver = s.totalGamesEver;
-    if (typeof s.totalIapsEver === 'number') state.totalIapsEver = s.totalIapsEver;
-    if (typeof s.totalSharesEver === 'number') state.totalSharesEver = s.totalSharesEver;
-    if (typeof s.bestComboEver === 'number') state.bestComboEver = s.bestComboEver;
-    if (typeof s.bestComboChainEver === 'number') state.bestComboChainEver = s.bestComboChainEver;
-    if (typeof s.bestLeaderboardRankEver === 'number') state.bestLeaderboardRankEver = s.bestLeaderboardRankEver;
-    if (s.achievements && typeof s.achievements === 'object') state.achievements = s.achievements;
-    if (typeof s.shieldDays === 'number') state.shieldDays = s.shieldDays;
-    if (s.lastSeenTournamentId) state.lastSeenTournamentId = s.lastSeenTournamentId;
     // Daily best — reset if it's from a previous day.
     if (s.dailyYMD === ymd() && typeof s.dailyBestToday === 'number') {
       state.dailyBestToday = s.dailyBestToday;
@@ -4014,30 +3663,11 @@ function updateStreakOnPlay() {
     toast(t('streakUp'));
   } else if (state.lastPlayedYMD === '') {
     state.streak = 1;
-  } else if ((state.shieldDays || 0) > 0) {
-    // Streak Shield saves the day. Consume one shield day per missed day,
-    // capped so absurd gaps don't drain the full shield in one shot.
-    const missedDays = daysBetweenYMD(state.lastPlayedYMD, today);
-    const consumed = Math.min(state.shieldDays, missedDays);
-    state.shieldDays -= consumed;
-    state.streak += 1;
-    toast(t('shieldSaved', { days: consumed }));
-    TG.haptic('success');
-    track('shield_consumed', { days: consumed, remaining: state.shieldDays });
   } else {
     state.streak = 1;
   }
   state.lastPlayedYMD = today;
   save();
-  checkAchievements();
-}
-
-function daysBetweenYMD(a, b) {
-  // Both YYYY-MM-DD. Returns whole-day delta (b - a). Negative if reversed.
-  const pa = a.split('-').map(Number), pb = b.split('-').map(Number);
-  const da = Date.UTC(pa[0], pa[1] - 1, pa[2]);
-  const db = Date.UTC(pb[0], pb[1] - 1, pb[2]);
-  return Math.round((db - da) / 86400000);
 }
 function streakRiskAt() {
   // End of today (local). Player must play before this to keep the streak.
@@ -4131,78 +3761,8 @@ async function openLeaderboard(mode) {
   openModal('modal-leaderboard');
   document.getElementById('lb-list').innerHTML = '<p style="text-align:center;color:var(--text-soft);padding:20px;">' + t('loading') + '</p>';
   document.getElementById('lb-my-rank').textContent = '';
-  document.getElementById('lb-tournament-header').innerHTML = '';
-  if (__lbActiveMode === 'tournament') {
-    const t = await fetchTournament();
-    if (t) {
-      renderTournamentHeader(t);
-      renderLeaderboardList(t.top || []);
-    } else {
-      renderLeaderboardList([]);
-    }
-  } else {
-    const top = await fetchLeaderboard(__lbActiveMode);
-    renderLeaderboardList(top);
-  }
-}
-
-async function fetchTournament() {
-  try {
-    const r = await fetch('/api/tournament/current');
-    const d = await r.json();
-    return (d && d.id) ? d : null;
-  } catch (e) { return null; }
-}
-
-function renderTournamentHeader(t) {
-  const wrap = document.getElementById('lb-tournament-header');
-  if (!t || !wrap) return;
-  // Pretty prize list: just top 3 + total pool.
-  const prizes = t.prizes || [];
-  const total = prizes.reduce((a, b) => a + b, 0);
-  const top3 = prizes.slice(0, 3).map((p, i) => '🥇🥈🥉'[i] + ' ' + formatNum(p)).join(' · ');
-  wrap.innerHTML =
-    '<div class="tournament-header">' +
-      '<div class="t-title">' + t.id + ' · ' + (t.closed ? '<span data-i18n="closed">CLOSED</span>' : '') + '</div>' +
-      '<div class="t-countdown" id="t-countdown">—</div>' +
-      '<div class="t-prizes">' + top3 + ' · ' + formatNum(total) + ' 💎 ' + (window.t ? window.t('totalPool') : 'POOL') + '</div>' +
-    '</div>';
-  // Live countdown — refresh every second while modal is open.
-  function tickCountdown() {
-    const el = document.getElementById('t-countdown');
-    if (!el) return;       // modal closed
-    const rem = Math.max(0, t.ends_at - Date.now());
-    const d = Math.floor(rem / 86400000);
-    const h = Math.floor((rem % 86400000) / 3600000);
-    const m = Math.floor((rem % 3600000) / 60000);
-    const s = Math.floor((rem % 60000) / 1000);
-    el.textContent = (d ? d + 'd ' : '') + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-    if (rem > 0) setTimeout(tickCountdown, 1000);
-  }
-  tickCountdown();
-}
-
-function renderAchievementsModal() {
-  const unlocked = ACHIEVEMENTS.filter(a => isAchievementUnlocked(a.id)).length;
-  document.getElementById('ach-modal-sub').textContent = unlocked + ' / ' + ACHIEVEMENTS.length;
-  const grid = document.getElementById('ach-grid');
-  grid.innerHTML = ACHIEVEMENTS.map(a => {
-    const open = isAchievementUnlocked(a.id);
-    return (
-      '<div class="ach-card ' + (open ? 'unlocked' : 'locked') + '">' +
-        '<div class="ac-icon">' + a.icon + '</div>' +
-        '<div class="ac-name">' + t(a.tKey) + '</div>' +
-        '<div class="ac-reward">+' + formatNum(a.reward) + ' 💎</div>' +
-      '</div>'
-    );
-  }).join('');
-}
-
-function updateAchBannerSub() {
-  const el = document.getElementById('ach-banner-sub');
-  if (!el) return;
-  const unlocked = ACHIEVEMENTS.filter(a => isAchievementUnlocked(a.id)).length;
-  el.textContent = unlocked + ' / ' + ACHIEVEMENTS.length + ' ' + t('unlocked');
+  const top = await fetchLeaderboard(__lbActiveMode);
+  renderLeaderboardList(top);
 }
 
 function renderLeaderboardList(top) {
@@ -4240,50 +3800,6 @@ function renderLeaderboardList(top) {
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-}
-
-// ============================================================
-// === ACHIEVEMENTS — runs after every state change, unlocks + gems
-// ============================================================
-
-function isAchievementUnlocked(id) {
-  return !!(state.achievements && state.achievements[id] && state.achievements[id].unlocked);
-}
-
-// Pending-unlock queue — sometimes 2-3 achievements unlock in the same
-// game-over frame (e.g., score_10k + first_top100). We surface them via a
-// small modal one after the other so each gets its moment.
-const __achQueue = [];
-let __achShowing = false;
-
-function checkAchievements() {
-  for (const a of ACHIEVEMENTS) {
-    if (isAchievementUnlocked(a.id)) continue;
-    try {
-      if (a.check()) {
-        state.achievements[a.id] = { unlocked: true, ts: Date.now() };
-        state.gems += a.reward;
-        track('achievement_unlocked', { ach_id: a.id, reward: a.reward });
-        __achQueue.push(a);
-      }
-    } catch (e) {}
-  }
-  save();
-  updateInventoryPills();
-  if (__achQueue.length > 0 && !__achShowing) showNextAchievement();
-}
-
-function showNextAchievement() {
-  const a = __achQueue.shift();
-  if (!a) { __achShowing = false; return; }
-  __achShowing = true;
-  document.getElementById('ach-unlock-icon').textContent = a.icon;
-  document.getElementById('ach-unlock-name').textContent = t(a.tKey);
-  document.getElementById('ach-unlock-reward').textContent = '+' + formatNum(a.reward) + ' 💎';
-  openModal('modal-ach-unlock');
-  TG.haptic('success');
-  sfx('star');
-  fireConfetti(40);
 }
 
 // ============================================================
@@ -4393,9 +3909,6 @@ async function shareResultWithImage() {
     shareLink = 'https://t.me/share/url?url=' + encodeURIComponent(botLink) + '&text=' + encodeURIComponent(text);
   }
   track('share_clicked', { score: state.score, has_image: !!imageUrl, mode: state.dailyMode ? 'daily' : 'regular' });
-  state.totalSharesEver = (state.totalSharesEver || 0) + 1;
-  save();
-  checkAchievements();
   try {
     if (tg && tg.openTelegramLink) tg.openTelegramLink(shareLink);
     else window.open(shareLink, '_blank');
@@ -4444,13 +3957,11 @@ function onGameOver() {
   updateStreakOnPlay();
   rolloverDailyCountersIfNeeded();
   state.gamesPlayedToday += 1;
-  state.totalGamesEver = (state.totalGamesEver || 0) + 1;
   const duration = state.gameStartedAt ? Math.round((Date.now() - state.gameStartedAt) / 1000) : 0;
   const wasDaily = !!state.dailyMode;
   const dailyYMDAtGameOver = state.dailyYMD;
   if (wasDaily && state.score > (state.dailyBestToday || 0)) state.dailyBestToday = state.score;
   save();
-  checkAchievements();
   track('game_over', {
     score:           state.score,
     is_new_best:     state.score >= state.best,
@@ -4464,15 +3975,6 @@ function onGameOver() {
   // Submit score in the background; the demo doesn't wait on it. Stash the
   // daily-rank for the daily-result modal — the demo's onDone reads it.
   submitScore(state.score, wasDaily ? 'daily' : 'regular').then(resp => {
-    // Track best-ever leaderboard rank (drives the first_top100 achievement).
-    if (resp && resp.rank) {
-      const cur = state.bestLeaderboardRankEver || 0;
-      if (cur === 0 || resp.rank < cur) {
-        state.bestLeaderboardRankEver = resp.rank;
-        save();
-      }
-    }
-    checkAchievements();
     if (wasDaily) {
       state.pendingDailyResult = {
         rank: resp && resp.rank,
@@ -4618,11 +4120,6 @@ function boot() {
   loadFlags();
   loadAdminStatus();
   heartbeat();
-  pollPendingPrizes();
-  // Initial achievement scan covers state restored from previous session
-  // that may now satisfy a check (e.g., player owned a skin from a past
-  // purchase but the achievement was added in this release).
-  checkAchievements();
   setInterval(heartbeat, 60 * 1000);
   if (!state.welcomed) openModal('modal-welcome');
   // Chest-ready nudge — fires once per session if today's chest is unclaimed.

@@ -169,6 +169,14 @@ const SKUS = {
     priceUsd: '$6.49',
     grant: { battlePass: 30 },
   },
+  streak_shield: {
+    id: 'streak_shield',
+    title: 'Streak Shield · 7 Days',
+    description: 'Miss a day? Your streak survives. 7-day insurance.',
+    price: 99,
+    priceUsd: '$1.29',
+    grant: { shieldDays: 7 },
+  },
   // Admin-only 1⭐ smoke-test SKU — lets Pickle verify the full Stars
   // flow (invoice → payment sheet → webhook → grant) for the lowest
   // possible cost. /api/create-invoice refuses to mint this for
@@ -306,6 +314,106 @@ function getPublicUrl() {
 function buildPlayUrl() {
   return getPublicUrl() || 'http://localhost:' + PORT;
 }
+
+// ============ Tournament ============
+// Weekly tournament: Monday 00:00 UTC → Sunday 23:59:59 UTC. Players whose
+// runs land during the window are recorded with their best score for the
+// week. When the week rolls over, the top 10 receive gem prizes pushed
+// into the pendingByUser queue — the player drains them via the normal
+// /api/poll-purchases flow on their next session.
+const TOURNAMENT_FILE = path.join(DATA_DIR, 'tournament.json');
+const TOURNAMENT_PRIZES = [1500, 1000, 700, 500, 350, 250, 200, 200, 150, 150];
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isoWeekId(d) {
+  // ISO 8601 week number: Monday start, week 1 contains Jan 4.
+  d = new Date(d || Date.now());
+  d.setUTCHours(0, 0, 0, 0);
+  // Thursday of the current ISO week — locking week start to Monday.
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return d.getUTCFullYear() + '-W' + String(weekNo).padStart(2, '0');
+}
+function weekStartUTC(d) {
+  // Returns Monday 00:00 UTC of the week containing d.
+  const x = new Date(d || Date.now());
+  x.setUTCHours(0, 0, 0, 0);
+  const day = x.getUTCDay() || 7;          // Sunday = 7
+  x.setUTCDate(x.getUTCDate() - (day - 1));
+  return x.getTime();
+}
+function loadTournament() {
+  try {
+    if (!fs.existsSync(TOURNAMENT_FILE)) return null;
+    return JSON.parse(fs.readFileSync(TOURNAMENT_FILE, 'utf8'));
+  } catch (e) { return null; }
+}
+function saveTournament(t) {
+  try { fs.writeFileSync(TOURNAMENT_FILE, JSON.stringify(t), 'utf8'); } catch (e) {}
+}
+function newTournament() {
+  const start = weekStartUTC();
+  return {
+    id: isoWeekId(),
+    starts_at: start,
+    ends_at: start + ONE_WEEK_MS - 1000,
+    prizes: TOURNAMENT_PRIZES.slice(),
+    entries: [],
+    closed: false,
+  };
+}
+function endTournament(t) {
+  // Distribute prizes via the pendingByUser queue using a synthetic
+  // `tournament_prize` "sku". applyGrant on the client handles it the same
+  // as any other purchase grant — gems land + a celebratory tournamentPrize
+  // payload triggers a custom modal.
+  const sorted = (t.entries || []).slice().sort((a, b) => b.score - a.score);
+  const winners = [];
+  for (let i = 0; i < t.prizes.length && i < sorted.length; i++) {
+    const player = sorted[i];
+    const prize = t.prizes[i];
+    const arr = pendingByUser.get(player.uid) || [];
+    arr.push({
+      sku: 'tournament_prize',
+      grant: { gems: prize, tournamentPrize: { id: t.id, rank: i + 1, prize } },
+      ts: Date.now(),
+    });
+    pendingByUser.set(player.uid, arr);
+    winners.push({ uid: player.uid, rank: i + 1, prize });
+  }
+  t.closed = true;
+  t.winners = winners;
+  console.log('[tournament] closed ' + t.id + ' — ' + winners.length + ' winners');
+  return t;
+}
+let tournament = loadTournament();
+function ensureTournament() {
+  // Called at boot + before every submit / fetch. Closes the prior week
+  // (distributing prizes) and starts a new one if we've rolled over.
+  const now = Date.now();
+  if (!tournament) {
+    tournament = newTournament();
+    saveTournament(tournament);
+    return;
+  }
+  if (!tournament.closed && now > tournament.ends_at) {
+    endTournament(tournament);
+    saveTournament(tournament);
+    tournament = newTournament();
+    saveTournament(tournament);
+    return;
+  }
+  // Mid-week sanity: if tournament.id doesn't match current ISO week (e.g.,
+  // server was off across the rollover), close + restart.
+  if (!tournament.closed && tournament.id !== isoWeekId()) {
+    endTournament(tournament);
+    saveTournament(tournament);
+    tournament = newTournament();
+    saveTournament(tournament);
+  }
+}
+ensureTournament();
 
 // ============ Bot identity ============
 // Looked up once at boot via Telegram getMe so the client can use it to
@@ -465,11 +573,43 @@ app.post('/api/score/submit', (req, res) => {
     }
   }
   saveLeaderboard(leaderboard);
+  // Tournament submission — auto-included for ALL game-overs (both regular
+  // and daily modes count) so the player doesn't have to opt in.
+  ensureTournament();
+  if (tournament && !tournament.closed) {
+    const tEntries = tournament.entries;
+    const tExisting = tEntries.findIndex(e => e.uid === user.id);
+    if (tExisting >= 0) {
+      if (score > tEntries[tExisting].score) tEntries[tExisting] = { uid: user.id, name: entry.name, score, ts: Date.now() };
+    } else {
+      tEntries.push({ uid: user.id, name: entry.name, score, ts: Date.now() });
+    }
+    tEntries.sort((a, b) => b.score - a.score);
+    tournament.entries = tEntries.slice(0, 500);  // keep top 500 for prize pool generosity
+    saveTournament(tournament);
+  }
   // Find the submitter's rank for the response so the client can show "you
   // are #N" without a second fetch.
   const board = mode === 'regular' ? leaderboard.regular : (leaderboard.daily[ymd] || []);
   const myRank = board.findIndex(e => e.uid === user.id) + 1;
-  res.json({ ok: true, rank: myRank || null, top: board.slice(0, 100) });
+  const tRank = tournament && !tournament.closed
+    ? tournament.entries.findIndex(e => e.uid === user.id) + 1
+    : 0;
+  res.json({ ok: true, rank: myRank || null, tournament_rank: tRank || null, top: board.slice(0, 100) });
+});
+
+// Tournament current — leaderboard + window + prize structure.
+app.get('/api/tournament/current', (req, res) => {
+  ensureTournament();
+  if (!tournament) return res.json({ tournament: null });
+  res.json({
+    id: tournament.id,
+    starts_at: tournament.starts_at,
+    ends_at: tournament.ends_at,
+    prizes: tournament.prizes,
+    top: tournament.entries.slice(0, 100),
+    closed: !!tournament.closed,
+  });
 });
 
 // Leaderboard fetch — public read, top 100 in the requested mode.
@@ -802,9 +942,12 @@ async function notifyLoop() {
 app.listen(PORT, () => {
   console.log(`Fat Stack serving on port ${PORT}`);
   console.log(`IAP: ${BOT_TOKEN ? 'enabled' : 'DISABLED — set BOT_TOKEN env var to turn on'}`);
+  console.log(`[tournament] current: ${tournament ? tournament.id : 'none'}`);
   if (BOT_TOKEN) {
     fetchBotIdentity();
     setInterval(notifyLoop, FIVE_MIN);
     console.log('[notify] loop armed — every 5 min');
   }
+  // Hourly tick to roll over tournaments even with no submissions.
+  setInterval(ensureTournament, 60 * 60 * 1000);
 });
