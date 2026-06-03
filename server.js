@@ -35,6 +35,26 @@ function notifyPurchase(info) {
   } catch (_e) {}
 }
 
+// Server-side app_init event for TG Data HQ retention + engagement. Called
+// from /api/heartbeat (request is already initData-validated, so userId is
+// Telegram-verified). TG Data HQ dedups to ~1/hour per (userId|game|event).
+function reportAppInit(info) {
+  if (!NOTIF_BOT_URL || !NOTIF_SECRET) return;
+  try {
+    fetch(NOTIF_BOT_URL.replace(/\/+$/, '') + '/api/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-notif-key': NOTIF_SECRET },
+      body: JSON.stringify({
+        game: NOTIF_GAME_ID,
+        event: 'app_init',
+        userId: info.userId,
+        username: info.username,
+        ts: Date.now(),
+      }),
+    }).catch(() => {});
+  } catch (_e) {}
+}
+
 // Deterministic secret derived from BOT_TOKEN so /api/setup-webhook can
 // register it with Telegram and the webhook handler can verify the same
 // value back. Anyone with the bot token can compute this (acceptable).
@@ -768,6 +788,7 @@ app.post('/api/heartbeat', (req, res) => {
   const { initData, lang, streak, streakRiskAt } = req.body || {};
   const user = validateInitData(initData);
   if (!user) return res.status(401).json({ error: 'invalid initData' });
+  reportAppInit({ userId: user.id, username: user.username });
   rememberUser(user.id, {
     chatId: user.id,
     lang: lang || 'en',
